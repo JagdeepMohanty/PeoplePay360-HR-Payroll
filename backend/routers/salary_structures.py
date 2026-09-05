@@ -14,6 +14,7 @@ from schemas.payroll import (
 router = APIRouter()
 
 
+@router.get("", response_model=list[SalaryStructureRead])
 @router.get("/", response_model=list[SalaryStructureRead])
 def list_salary_structures(
     db: Session = Depends(get_db),
@@ -34,6 +35,7 @@ def get_salary_structure(
     return struct
 
 
+@router.post("", response_model=SalaryStructureRead, status_code=201)
 @router.post("/", response_model=SalaryStructureRead, status_code=201)
 def create_salary_structure(
     payload: SalaryStructureCreate,

@@ -23,6 +23,7 @@ def get_my_employee_profile(
     return emp
 
 
+@router.get("", response_model=list[EmployeeRead])
 @router.get("/", response_model=list[EmployeeRead])
 def list_employees(
     db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
@@ -52,6 +53,7 @@ def get_employee(
     return emp
 
 
+@router.post("", response_model=EmployeeRead, status_code=201)
 @router.post("/", response_model=EmployeeRead, status_code=201)
 def create_employee(
     payload: EmployeeCreate,

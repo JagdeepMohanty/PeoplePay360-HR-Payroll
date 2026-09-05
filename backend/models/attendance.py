@@ -15,3 +15,8 @@ class Attendance(Base):
     is_manual_override = Column(Boolean, default=False)
 
     employee = relationship("Employee", back_populates="attendances")
+
+    @property
+    def employee_name(self) -> str:
+        return self.employee.full_name if self.employee else f"Employee #{self.employee_id}"
+

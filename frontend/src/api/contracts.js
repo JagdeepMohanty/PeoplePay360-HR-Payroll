@@ -2,7 +2,7 @@ import client from './client'
 
 export const getContracts = async (employeeId = null) => {
   const params = employeeId ? { employee_id: employeeId } : {}
-  const res = await client.get('/contracts', { params })
+  const res = await client.get('/contracts/', { params })
   return res.data
 }
 
@@ -17,7 +17,7 @@ export const getContract = async (id) => {
 }
 
 export const createContract = async (data) => {
-  const res = await client.post('/contracts', data)
+  const res = await client.post('/contracts/', data)
   return res.data
 }
 

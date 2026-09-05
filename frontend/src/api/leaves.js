@@ -15,12 +15,12 @@ export const getLeaveAllocations = async (employeeId = null, year = null) => {
 
 export const getLeaveRequests = async (employeeId = null) => {
   const params = employeeId ? { employee_id: employeeId } : {}
-  const res = await client.get('/leaves', { params })
+  const res = await client.get('/leaves/', { params })
   return res.data
 }
 
 export const submitLeave = async (data) => {
-  const res = await client.post('/leaves', data)
+  const res = await client.post('/leaves/', data)
   return res.data
 }
 

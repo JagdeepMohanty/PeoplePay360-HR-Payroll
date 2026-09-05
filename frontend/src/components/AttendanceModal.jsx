@@ -3,19 +3,26 @@ import { logAttendance } from '../api/attendance'
 import { useAuth } from '../context/AuthContext'
 import { X, Clock, Check } from 'lucide-react'
 
-export default function AttendanceModal({ isOpen, onClose, onSuccess, employees = [] }) {
+// Helper to format date into local datetime-local string (YYYY-MM-DDTHH:mm)
+const getLocalDatetimeLocal = (d = new Date()) => {
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+export default function AttendanceModal({ isOpen, onClose, onSuccess, employees = [], defaultEmployeeId = null }) {
   const { user, activeRole } = useAuth()
   const isEmployeeRole = activeRole === 'EMPLOYEE' && !!user?.employee_id
 
   const getInitialEmpId = () => {
     if (isEmployeeRole) return user.employee_id
+    if (defaultEmployeeId) return defaultEmployeeId
     if (employees.length > 0) return employees[0].id
     return ''
   }
 
   const [formData, setFormData] = useState({
     employee_id: getInitialEmpId(),
-    check_in: new Date().toISOString().slice(0, 16),
+    check_in: getLocalDatetimeLocal(),
     check_out: '',
     worked_hours: 8.0,
     status: 'PRESENT',
@@ -25,31 +32,73 @@ export default function AttendanceModal({ isOpen, onClose, onSuccess, employees 
 
   useEffect(() => {
     if (isOpen) {
-      const selectedId = isEmployeeRole
+      const initialId = isEmployeeRole
         ? user.employee_id
-        : (employees.length > 0 ? employees[0].id : '')
+        : defaultEmployeeId || (employees.length > 0 ? employees[0].id : '')
 
       setFormData({
-        employee_id: selectedId,
-        check_in: new Date().toISOString().slice(0, 16),
+        employee_id: initialId,
+        check_in: getLocalDatetimeLocal(),
         check_out: '',
         worked_hours: 8.0,
         status: 'PRESENT',
       })
       setError('')
     }
-  }, [isOpen, employees, activeRole, user])
+  }, [isOpen, employees, defaultEmployeeId, isEmployeeRole, user])
+
+  if (!isOpen) return null
+
+  const handleCheckOutChange = (val) => {
+    let hours = formData.worked_hours
+    if (formData.check_in && val) {
+      const d1 = new Date(formData.check_in)
+      const d2 = new Date(val)
+      if (!isNaN(d1.getTime()) && !isNaN(d2.getTime()) && d2 > d1) {
+        hours = Math.round(((d2.getTime() - d1.getTime()) / (1000 * 60 * 60)) * 10) / 10
+      }
+    }
+    setFormData((prev) => ({ ...prev, check_out: val, worked_hours: hours }))
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setLoading(true)
     setError('')
+
+    const empId = Number(formData.employee_id)
+    if (!empId || isNaN(empId)) {
+      setError('Please select a valid employee.')
+      return
+    }
+
+    if (!formData.check_in) {
+      setError('Please provide a valid check-in time.')
+      return
+    }
+
+    const checkInDate = new Date(formData.check_in)
+    if (isNaN(checkInDate.getTime())) {
+      setError('Invalid check-in time format.')
+      return
+    }
+
+    let checkOutISO = null
+    if (formData.check_out) {
+      const checkOutDate = new Date(formData.check_out)
+      if (isNaN(checkOutDate.getTime())) {
+        setError('Invalid check-out time format.')
+        return
+      }
+      checkOutISO = checkOutDate.toISOString()
+    }
+
+    setLoading(true)
     try {
       const payload = {
-        employee_id: Number(formData.employee_id),
-        check_in: new Date(formData.check_in).toISOString(),
-        check_out: formData.check_out ? new Date(formData.check_out).toISOString() : null,
-        worked_hours: Number(formData.worked_hours),
+        employee_id: empId,
+        check_in: checkInDate.toISOString(),
+        check_out: checkOutISO,
+        worked_hours: Number(formData.worked_hours) || 8.0,
         status: formData.status,
       }
       const res = await logAttendance(payload)
@@ -71,7 +120,10 @@ export default function AttendanceModal({ isOpen, onClose, onSuccess, employees 
             </div>
             <h3 className="text-sm font-bold text-slate-900">Log / Correct Attendance</h3>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 border-0 cursor-pointer">
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 border-0 cursor-pointer"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -93,11 +145,17 @@ export default function AttendanceModal({ isOpen, onClose, onSuccess, employees 
               onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
               className="w-full px-3 py-2 rounded-xl bg-slate-50 text-slate-800 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#714b67]/20 border-0 outline-none disabled:opacity-75 disabled:cursor-not-allowed"
             >
-              {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || `Employee #${emp.id}`} ({emp.department})
+              {employees.length === 0 && isEmployeeRole && user ? (
+                <option value={user.employee_id}>
+                  {user.name || user.email} (Self)
                 </option>
-              ))}
+              ) : (
+                employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || `Employee #${emp.id}`} ({emp.department || 'Staff'})
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -117,7 +175,7 @@ export default function AttendanceModal({ isOpen, onClose, onSuccess, employees 
               <input
                 type="datetime-local"
                 value={formData.check_out}
-                onChange={(e) => setFormData({ ...formData, check_out: e.target.value })}
+                onChange={(e) => handleCheckOutChange(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-slate-50 text-slate-800 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#714b67]/20 border-0 outline-none"
               />
             </div>
@@ -128,7 +186,9 @@ export default function AttendanceModal({ isOpen, onClose, onSuccess, employees 
               <label className="block text-xs font-semibold text-slate-600 mb-1">Worked Hours</label>
               <input
                 type="number"
-                step="0.5"
+                step="0.1"
+                min="0"
+                max="24"
                 required
                 value={formData.worked_hours}
                 onChange={(e) => setFormData({ ...formData, worked_hours: e.target.value })}
@@ -150,7 +210,11 @@ export default function AttendanceModal({ isOpen, onClose, onSuccess, employees 
           </div>
 
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-xs font-medium text-slate-500 hover:bg-slate-100 border-0 cursor-pointer">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-xs font-medium text-slate-500 hover:bg-slate-100 border-0 cursor-pointer"
+            >
               Cancel
             </button>
             <button

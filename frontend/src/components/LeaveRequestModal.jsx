@@ -1,11 +1,21 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { submitLeave } from '../api/leaves'
+import { useAuth } from '../context/AuthContext'
 import { X, Calendar, Check } from 'lucide-react'
 
 export default function LeaveRequestModal({ isOpen, onClose, onSuccess, employees = [], types = [] }) {
+  const { user, activeRole } = useAuth()
+  const isEmployeeRole = activeRole === 'EMPLOYEE' && !!user?.employee_id
+
+  const getInitialEmpId = () => {
+    if (isEmployeeRole) return user.employee_id
+    if (employees.length > 0) return employees[0].id
+    return ''
+  }
+
   const [formData, setFormData] = useState({
-    employee_id: employees.length > 0 ? employees[0].id : 1,
-    type_id: types.length > 0 ? types[0].id : 1,
+    employee_id: getInitialEmpId(),
+    type_id: types.length > 0 ? types[0].id : '',
     date_from: new Date().toISOString().split('T')[0],
     date_to: new Date(Date.now() + 86400000).toISOString().split('T')[0],
     duration_days: 1.0,
@@ -13,6 +23,25 @@ export default function LeaveRequestModal({ isOpen, onClose, onSuccess, employee
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (isOpen) {
+      const selectedEmpId = isEmployeeRole
+        ? user.employee_id
+        : (employees.length > 0 ? employees[0].id : '')
+      const selectedType = types.length > 0 ? types[0] : null
+
+      setFormData({
+        employee_id: selectedEmpId,
+        type_id: selectedType ? selectedType.id : '',
+        date_from: new Date().toISOString().split('T')[0],
+        date_to: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+        duration_days: 1.0,
+        is_unpaid: selectedType ? selectedType.is_unpaid : false,
+      })
+      setError('')
+    }
+  }, [isOpen, employees, types, activeRole, user])
 
   if (!isOpen) return null
 
@@ -70,15 +99,18 @@ export default function LeaveRequestModal({ isOpen, onClose, onSuccess, employee
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Employee</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">
+              Employee {isEmployeeRole && <span className="text-[10px] text-amber-600 font-normal">(Locked to Self)</span>}
+            </label>
             <select
               value={formData.employee_id}
+              disabled={isEmployeeRole}
               onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-slate-50 text-slate-800 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#714b67]/20 border-0 outline-none"
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 text-slate-800 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#714b67]/20 border-0 outline-none disabled:opacity-75 disabled:cursor-not-allowed"
             >
               {employees.map((emp) => (
                 <option key={emp.id} value={emp.id}>
-                  {emp.full_name || emp.name || `Employee #${emp.id}`} ({emp.department})
+                  {emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || `Employee #${emp.id}`} ({emp.department})
                 </option>
               ))}
             </select>

@@ -31,6 +31,7 @@ def get_active_contract(
     return contract
 
 
+@router.get("", response_model=list[ContractRead])
 @router.get("/", response_model=list[ContractRead])
 def list_contracts(
     employee_id: Optional[int] = Query(None, description="Filter contracts by employee"),
@@ -60,6 +61,7 @@ def get_contract(
     return contract
 
 
+@router.post("", response_model=ContractRead, status_code=201)
 @router.post("/", response_model=ContractRead, status_code=201)
 def create_contract(
     payload: ContractCreate,

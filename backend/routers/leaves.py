@@ -85,6 +85,7 @@ def create_leave_allocation(
 # Leave Requests Endpoints (Module A4 Deduction Business Logic)
 # ---------------------------------------------------------------------------
 
+@router.get("", response_model=list[LeaveRequestRead])
 @router.get("/", response_model=list[LeaveRequestRead])
 def list_leave_requests(
     employee_id: Optional[int] = Query(None),
@@ -104,6 +105,7 @@ def list_leave_requests(
     return query.all()
 
 
+@router.post("", response_model=LeaveRequestRead, status_code=201)
 @router.post("/", response_model=LeaveRequestRead, status_code=201)
 @router.post("/request", response_model=LeaveRequestRead, status_code=201)
 def submit_leave(
