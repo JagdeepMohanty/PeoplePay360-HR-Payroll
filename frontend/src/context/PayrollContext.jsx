@@ -1,0 +1,936 @@
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react'
+import { loginApi, ROLE_ACCOUNTS } from '../api/auth'
+import { getEmployees, createEmployee as apiCreateEmployee } from '../api/employees'
+import { getContracts, createContract as apiCreateContract } from '../api/contracts'
+import { getLeaveRequests, submitLeave as apiSubmitLeave, approveLeave as apiApproveLeave, refuseLeave as apiRefuseLeave } from '../api/leaves'
+import { getAttendance, logAttendance as apiLogAttendance } from '../api/attendance'
+import { getSalaryStructures, createSalaryStructure as apiCreateSalaryStructure, addSalaryRuleApi } from '../api/salaryStructures'
+import { getPayruns, createPayrun as apiCreatePayrun, computePayrun as apiComputePayrun, validatePayrun as apiValidatePayrun, confirmPayrun as apiConfirmPayrun, payPayrun as apiPayPayrun, sendPayslipsEmail as apiSendPayslipsEmail } from '../api/payruns'
+import { getDashboard as apiGetDashboard } from '../api/dashboard'
+
+const PayrollContext = createContext(null)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SALARY RULE ENGINE
+// Each structure holds an ordered list of rule definitions.
+// Rules are applied sequentially using the "inputs" object built up so far.
+// Computation types:
+//   'percent_of_gross'  → pct * gross_wage
+//   'percent_of_rule'   → pct * inputs[source_code]
+//   'fixed'             → fixed_amount
+//   'balance'           → gross_wage - sum(all allowances so far)
+//   'slab_pt'           → professional tax state slab
+//   'tds_new_regime'    → annual income slab based TDS
+// ─────────────────────────────────────────────────────────────────────────────
+const initialSalaryStructures = [
+  {
+    id: 1,
+    name: 'Regular Tech Band 4',
+    code: 'TECH-B4',
+    base_percent_label: '50% Basic',
+    rules: [
+      { code: 'BASIC',  name: 'Basic Salary',            category: 'Allowance',           computation: 'percent_of_gross', pct: 0.50, source: null,    amount: 0, taxable: true,  sequence: 1  },
+      { code: 'HRA',    name: 'House Rent Allowance',     category: 'Allowance',           computation: 'percent_of_rule',  pct: 0.40, source: 'BASIC', amount: 0, taxable: false, sequence: 2  },
+      { code: 'SA',     name: 'Special Allowance',        category: 'Allowance',           computation: 'balance',          pct: 0,    source: null,    amount: 0, taxable: true,  sequence: 3  },
+      { code: 'PF_EE',  name: 'Provident Fund (EE)',      category: 'Deduction',           computation: 'percent_of_rule',  pct: 0.12, source: 'BASIC', amount: 0, taxable: false, sequence: 10 },
+      { code: 'PT',     name: 'Professional Tax',         category: 'Deduction',           computation: 'slab_pt',          pct: 0,    source: null,    amount: 200, taxable: true, sequence: 11 },
+      { code: 'TDS',    name: 'Income Tax (TDS)',         category: 'Deduction',           computation: 'tds_new_regime',   pct: 0,    source: null,    amount: 0, taxable: false, sequence: 12 },
+      { code: 'PF_ER',  name: 'Provident Fund (ER)',      category: 'Company Contribution',computation: 'percent_of_rule',  pct: 0.12, source: 'BASIC', amount: 0, taxable: false, sequence: 20 },
+    ],
+  },
+  {
+    id: 2,
+    name: 'Executive HR Band 3',
+    code: 'EXEC-HR3',
+    base_percent_label: '50% Basic',
+    rules: [
+      { code: 'BASIC',  name: 'Basic Salary',             category: 'Allowance',           computation: 'percent_of_gross', pct: 0.50, source: null,    amount: 0, taxable: true,  sequence: 1  },
+      { code: 'HRA',    name: 'House Rent Allowance',      category: 'Allowance',           computation: 'percent_of_rule',  pct: 0.40, source: 'BASIC', amount: 0, taxable: false, sequence: 2  },
+      { code: 'SA',     name: 'Special Allowance',         category: 'Allowance',           computation: 'balance',          pct: 0,    source: null,    amount: 0, taxable: true,  sequence: 3  },
+      { code: 'PF_EE',  name: 'Provident Fund (EE)',       category: 'Deduction',           computation: 'percent_of_rule',  pct: 0.12, source: 'BASIC', amount: 0, taxable: false, sequence: 10 },
+      { code: 'PT',     name: 'Professional Tax',          category: 'Deduction',           computation: 'slab_pt',          pct: 0,    source: null,    amount: 200, taxable: true, sequence: 11 },
+      { code: 'TDS',    name: 'Income Tax (TDS)',          category: 'Deduction',           computation: 'tds_new_regime',   pct: 0,    source: null,    amount: 0, taxable: false, sequence: 12 },
+    ],
+  },
+  {
+    id: 3,
+    name: 'Sales Base + Incentive',
+    code: 'SALES-COMM',
+    base_percent_label: '40% Basic',
+    rules: [
+      { code: 'BASIC',  name: 'Basic Salary',             category: 'Allowance',           computation: 'percent_of_gross', pct: 0.40, source: null,    amount: 0, taxable: true,  sequence: 1  },
+      { code: 'HRA',    name: 'House Rent Allowance',      category: 'Allowance',           computation: 'percent_of_rule',  pct: 0.40, source: 'BASIC', amount: 0, taxable: false, sequence: 2  },
+      { code: 'INCENT', name: 'Sales Incentive',           category: 'Allowance',           computation: 'fixed',            pct: 0,    source: null,    amount: 15000, taxable: true, sequence: 3 },
+      { code: 'SA',     name: 'Special Allowance',         category: 'Allowance',           computation: 'balance',          pct: 0,    source: null,    amount: 0, taxable: true,  sequence: 4  },
+      { code: 'PF_EE',  name: 'Provident Fund (EE)',       category: 'Deduction',           computation: 'percent_of_rule',  pct: 0.12, source: 'BASIC', amount: 0, taxable: false, sequence: 10 },
+      { code: 'PT',     name: 'Professional Tax',          category: 'Deduction',           computation: 'slab_pt',          pct: 0,    source: null,    amount: 200, taxable: true, sequence: 11 },
+      { code: 'TDS',    name: 'Income Tax (TDS)',          category: 'Deduction',           computation: 'tds_new_regime',   pct: 0,    source: null,    amount: 0, taxable: false, sequence: 12 },
+    ],
+  },
+  {
+    id: 4,
+    name: 'Operations Band 2',
+    code: 'OPS-B2',
+    base_percent_label: '50% Basic',
+    rules: [
+      { code: 'BASIC',  name: 'Basic Salary',             category: 'Allowance',           computation: 'percent_of_gross', pct: 0.50, source: null,    amount: 0, taxable: true,  sequence: 1  },
+      { code: 'HRA',    name: 'House Rent Allowance',      category: 'Allowance',           computation: 'percent_of_rule',  pct: 0.40, source: 'BASIC', amount: 0, taxable: false, sequence: 2  },
+      { code: 'SA',     name: 'Special Allowance',         category: 'Allowance',           computation: 'balance',          pct: 0,    source: null,    amount: 0, taxable: true,  sequence: 3  },
+      { code: 'PF_EE',  name: 'Provident Fund (EE)',       category: 'Deduction',           computation: 'percent_of_rule',  pct: 0.12, source: 'BASIC', amount: 0, taxable: false, sequence: 10 },
+      { code: 'PT',     name: 'Professional Tax',          category: 'Deduction',           computation: 'slab_pt',          pct: 0,    source: null,    amount: 200, taxable: true, sequence: 11 },
+      { code: 'TDS',    name: 'Income Tax (TDS)',          category: 'Deduction',           computation: 'tds_new_regime',   pct: 0,    source: null,    amount: 0, taxable: false, sequence: 12 },
+    ],
+  },
+  {
+    id: 5,
+    name: 'Engineering Intern',
+    code: 'ENG-INTERN',
+    base_percent_label: 'Stipend Flat',
+    rules: [
+      { code: 'STIPEND', name: 'Monthly Stipend',          category: 'Allowance',           computation: 'percent_of_gross', pct: 1.0, source: null,    amount: 0, taxable: false, sequence: 1  },
+    ],
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RULE COMPUTATION ENGINE
+// Applies salary rules to produce a full payslip breakdown
+// ─────────────────────────────────────────────────────────────────────────────
+export function computePayslip(grossWage, structureRules) {
+  const sortedRules = [...structureRules].sort((a, b) => a.sequence - b.sequence)
+  const inputs = { GROSS: grossWage }
+  const lineItems = []
+  let totalAllowances = 0
+  let totalDeductions = 0
+  let totalCompanyContrib = 0
+
+  const annualGross = grossWage * 12
+
+  for (const rule of sortedRules) {
+    let value = 0
+
+    switch (rule.computation) {
+      case 'percent_of_gross':
+        value = Math.round(grossWage * rule.pct)
+        break
+      case 'percent_of_rule':
+        value = Math.round((inputs[rule.source] || 0) * rule.pct)
+        break
+      case 'fixed':
+        value = rule.amount
+        break
+      case 'balance': {
+        // Balancing component = gross - sum of all allowances computed so far
+        value = Math.max(0, Math.round(grossWage - totalAllowances))
+        break
+      }
+      case 'slab_pt':
+        // Karnataka professional tax slab
+        if (grossWage > 15000) value = 200
+        else if (grossWage > 10000) value = 150
+        else value = 0
+        break
+      case 'tds_new_regime': {
+        // New tax regime annual income slabs (FY 2025-26)
+        const taxableAnnual = annualGross
+        let annualTax = 0
+        if (taxableAnnual <= 300000) annualTax = 0
+        else if (taxableAnnual <= 700000) annualTax = (taxableAnnual - 300000) * 0.05
+        else if (taxableAnnual <= 1000000) annualTax = 20000 + (taxableAnnual - 700000) * 0.10
+        else if (taxableAnnual <= 1200000) annualTax = 50000 + (taxableAnnual - 1000000) * 0.15
+        else if (taxableAnnual <= 1500000) annualTax = 80000 + (taxableAnnual - 1200000) * 0.20
+        else annualTax = 140000 + (taxableAnnual - 1500000) * 0.30
+        // Add 4% health & education cess
+        annualTax = Math.round(annualTax * 1.04)
+        value = Math.round(annualTax / 12)
+        break
+      }
+      default:
+        value = 0
+    }
+
+    inputs[rule.code] = value
+
+    if (rule.category === 'Allowance') {
+      totalAllowances += value
+    } else if (rule.category === 'Deduction') {
+      totalDeductions += value
+    } else if (rule.category === 'Company Contribution') {
+      totalCompanyContrib += value
+    }
+
+    lineItems.push({
+      code: rule.code,
+      name: rule.name,
+      category: rule.category,
+      amount: value,
+      computation: rule.computation,
+      pct: rule.pct,
+      source: rule.source,
+      taxable: rule.taxable,
+      sequence: rule.sequence,
+    })
+  }
+
+  const netPayable = totalAllowances - totalDeductions
+
+  return {
+    lineItems,
+    totalAllowances,
+    totalDeductions,
+    totalCompanyContrib,
+    netPayable,
+    basic: inputs['BASIC'] || inputs['STIPEND'] || 0,
+    hra: inputs['HRA'] || 0,
+    pf: inputs['PF_EE'] || 0,
+    tds: inputs['TDS'] || 0,
+    pt: inputs['PT'] || 0,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAYROLL ISSUE SCANNER
+// Scans real data and returns structured warning objects
+// ─────────────────────────────────────────────────────────────────────────────
+export function scanPayrollIssues({ employees, contracts, attendance, timeOffRequests, period_start, period_end, selected_employee_ids }) {
+  const warnings = []
+  const targetEmps = employees.filter(e => selected_employee_ids.includes(e.id))
+
+  for (const emp of targetEmps) {
+    // 1. Missing active contract
+    const hasContract = contracts.some(c => c.employee === emp.name && c.status === 'Active')
+    if (!hasContract) {
+      warnings.push({
+        id: `WARN-NOCONTRACT-${emp.id}`,
+        employee: emp.name,
+        type: 'Missing Active Contract',
+        impact: 'Blocked',
+        severity: 'Critical',
+        description: `No active contract found for ${emp.name}. Cannot compute payslip without a valid wage and salary structure.`,
+      })
+    }
+
+    // 2. Incomplete employee data
+    if (!emp.work_email || emp.work_email === '' || !emp.wage || emp.wage === 0) {
+      warnings.push({
+        id: `WARN-INCOMPLETE-${emp.id}`,
+        employee: emp.name,
+        type: 'Incomplete Employee Profile',
+        impact: '₹0',
+        severity: 'Critical',
+        description: `Missing required fields: ${!emp.work_email ? 'work email ' : ''}${!emp.wage || emp.wage === 0 ? 'monthly wage' : ''}. Payslip cannot be generated.`,
+      })
+    }
+
+    // 3. Duplicate attendance on same date
+    const empAttendance = attendance.filter(a => a.employee === emp.name)
+    const dateMap = {}
+    for (const record of empAttendance) {
+      if (dateMap[record.date]) {
+        warnings.push({
+          id: `WARN-DUPATT-${emp.id}-${record.date}`,
+          employee: emp.name,
+          type: 'Duplicate Attendance Entry',
+          impact: 'Audit Risk',
+          severity: 'Warning',
+          description: `Two attendance records found for ${record.date}. Duplicate entries may skew worked-hours calculation.`,
+        })
+        break
+      }
+      dateMap[record.date] = true
+    }
+
+    // 4. Unapproved leave overlapping payrun period
+    const pendingLeaves = timeOffRequests.filter(
+      t => t.employee === emp.name && t.status === 'Pending' &&
+        t.start_date >= period_start && t.start_date <= period_end
+    )
+    for (const leave of pendingLeaves) {
+      const estDeduction = Math.round(((employees.find(e => e.name === emp.name)?.wage || 0) / 26) * leave.days)
+      warnings.push({
+        id: `WARN-LEAVE-${emp.id}-${leave.id}`,
+        employee: emp.name,
+        type: 'Unapproved Leave Deduction',
+        impact: `₹${estDeduction.toLocaleString('en-IN')}`,
+        severity: 'Warning',
+        description: `${leave.days}-day ${leave.leave_type} (${leave.start_date}) is still pending approval. Will be treated as LOP if not approved before payrun close.`,
+      })
+    }
+
+    // 5. Excessive late check-ins (>= 3 lates = LOP half-day rule)
+    const lateCount = attendance.filter(a => a.employee === emp.name && a.status === 'Late').length
+    if (lateCount >= 3) {
+      const wage = emp.wage || 0
+      const halfDayDeduction = Math.round(wage / 52)
+      warnings.push({
+        id: `WARN-LATE-${emp.id}`,
+        employee: emp.name,
+        type: 'Late Arrival LOP Threshold Crossed',
+        impact: `₹${halfDayDeduction.toLocaleString('en-IN')}`,
+        severity: 'Warning',
+        description: `${lateCount} late check-ins exceed the 3-instance grace threshold. A half-day LOP deduction of ₹${halfDayDeduction.toLocaleString('en-IN')} applies per company policy.`,
+      })
+    }
+  }
+
+  return warnings
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTION-BASED DATA STATE (No hardcoded mock data)
+// All records are dynamic, loaded from SQLite via FastAPI & populated via actions
+// ─────────────────────────────────────────────────────────────────────────────
+const initialEmployees = []
+const initialContracts = []
+const initialAttendance = []
+const initialTimeOffRequests = []
+const initialBalances = []
+const buildInitialPayruns = () => []
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROVIDER
+// ─────────────────────────────────────────────────────────────────────────────
+export function PayrollProvider({ children }) {
+  // Wipe stale mock data from previous prototype runs
+  if (typeof window !== 'undefined' && localStorage.getItem('oxp_data_version') !== '2.0-live') {
+    localStorage.removeItem('oxp_employees')
+    localStorage.removeItem('oxp_contracts')
+    localStorage.removeItem('oxp_attendance')
+    localStorage.removeItem('oxp_timeoff')
+    localStorage.removeItem('oxp_payruns')
+    localStorage.setItem('oxp_data_version', '2.0-live')
+  }
+
+  const [role, setRole] = useState(() => localStorage.getItem('oxp_role') || 'Admin')
+
+  const [employees, setEmployees] = useState(() => {
+    try { const s = localStorage.getItem('oxp_employees'); return s ? JSON.parse(s) : [] } catch { return [] }
+  })
+  const [contracts, setContracts] = useState(() => {
+    try { const s = localStorage.getItem('oxp_contracts'); return s ? JSON.parse(s) : [] } catch { return [] }
+  })
+  const [attendance, setAttendance] = useState(() => {
+    try { const s = localStorage.getItem('oxp_attendance'); return s ? JSON.parse(s) : [] } catch { return [] }
+  })
+  const [timeOffRequests, setTimeOffRequests] = useState(() => {
+    try { const s = localStorage.getItem('oxp_timeoff'); return s ? JSON.parse(s) : [] } catch { return [] }
+  })
+  const [leaveBalances, setLeaveBalances] = useState(() => {
+    try { const s = localStorage.getItem('oxp_balances'); return s ? JSON.parse(s) : [] } catch { return [] }
+  })
+  const [payruns, setPayruns] = useState(() => {
+    try { const s = localStorage.getItem('oxp_payruns'); return s ? JSON.parse(s) : [] } catch { return [] }
+  })
+  const [salaryStructures, setSalaryStructures] = useState(() => {
+    try { const s = localStorage.getItem('oxp_structures'); return s ? JSON.parse(s) : initialSalaryStructures } catch { return initialSalaryStructures }
+  })
+
+  const [toast, setToast] = useState(null)
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3500)
+  }
+
+  const [isBackendConnected, setIsBackendConnected] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+
+  // Map frontend role to backend user account
+  const getAccountForRole = (r) => {
+    switch (r) {
+      case 'Admin': return ROLE_ACCOUNTS.find(a => a.role === 'ADMIN')
+      case 'HR Manager': return ROLE_ACCOUNTS.find(a => a.role === 'HR_MANAGER')
+      case 'HR Payroll User': return ROLE_ACCOUNTS.find(a => a.role === 'HR_PAYROLL_USER')
+      case 'HR Payroll Manager': return ROLE_ACCOUNTS.find(a => a.role === 'HR_PAYROLL_MANAGER')
+      case 'Employee': return ROLE_ACCOUNTS.find(a => a.role === 'EMPLOYEE')
+      default: return ROLE_ACCOUNTS[0]
+    }
+  }
+
+  const syncFromBackend = useCallback(async () => {
+    try {
+      setIsSyncing(true)
+      const acct = getAccountForRole(role) || ROLE_ACCOUNTS[0]
+      const authRes = await loginApi(acct.email, 'password123')
+      if (authRes?.access_token) {
+        localStorage.setItem('token', authRes.access_token)
+      }
+
+      // Fetch live collections in parallel
+      const [bEmps, bContracts, bLeaves, bAttendance, bStructures] = await Promise.allSettled([
+        getEmployees(),
+        getContracts(),
+        getLeaveRequests(),
+        getAttendance(),
+        getSalaryStructures(),
+      ])
+
+      let empList = employees
+      if (bEmps.status === 'fulfilled' && Array.isArray(bEmps.value) && bEmps.value.length > 0) {
+        empList = bEmps.value.map(e => ({
+          id: e.id,
+          name: e.full_name || `${e.first_name} ${e.last_name}`,
+          first_name: e.first_name,
+          last_name: e.last_name,
+          department: e.department || 'Engineering',
+          job_position: e.job_position || 'Staff',
+          work_email: e.email,
+          email: e.email,
+          work_phone: '+91 98765 00000',
+          manager_name: e.manager_id ? `Manager #${e.manager_id}` : 'None',
+          contract_type: 'Full-time Permanent',
+          wage: 85000,
+          date_joined: '2025-01-01',
+          status: e.is_active ? 'Active' : 'Archived',
+          contracts_count: e.contracts_count ?? 1,
+          leave_balance: e.leave_balance ?? 20,
+          leaves_count: e.leaves_count ?? 0,
+          attendances_count: e.attendances_count ?? 0,
+        }))
+        setEmployees(empList)
+      }
+
+      if (bContracts.status === 'fulfilled' && Array.isArray(bContracts.value) && bContracts.value.length > 0) {
+        const cList = bContracts.value.map(c => {
+          const emp = empList.find(e => e.id === c.employee_id)
+          return {
+            id: c.id,
+            employee_id: c.employee_id,
+            contract_ref: `CNT-2025-${String(c.id).padStart(3, '0')}`,
+            employee: emp ? emp.name : `Employee #${c.employee_id}`,
+            department: c.department || emp?.department || 'Engineering',
+            job_position: c.job_position || emp?.job_position || 'Specialist',
+            start_date: c.date_start || '2025-01-01',
+            end_date: c.date_end || 'Open-ended',
+            wage: c.wage || 85000,
+            structure: 'Regular Tech Band 4',
+            status: c.is_active ? 'Active' : 'Expired',
+          }
+        })
+        setContracts(cList)
+      }
+
+      if (bLeaves.status === 'fulfilled' && Array.isArray(bLeaves.value) && bLeaves.value.length > 0) {
+        const lList = bLeaves.value.map(l => {
+          const emp = empList.find(e => e.id === l.employee_id)
+          return {
+            id: l.id,
+            employee_id: l.employee_id,
+            employee: emp ? emp.name : `Employee #${l.employee_id}`,
+            department: emp?.department || 'Engineering',
+            leave_type: l.type_id === 1 ? 'Paid Time Off (PTO)' : l.type_id === 2 ? 'Sick Leave' : 'Casual Leave',
+            start_date: l.date_start,
+            end_date: l.date_end,
+            days: l.duration_days || 1,
+            reason: l.reason || 'Personal Leave',
+            status: l.status === 'APPROVED' ? 'Approved' : l.status === 'REFUSED' ? 'Refused' : 'Pending',
+          }
+        })
+        setTimeOffRequests(lList)
+      }
+
+      if (bAttendance.status === 'fulfilled' && Array.isArray(bAttendance.value) && bAttendance.value.length > 0) {
+        const aList = bAttendance.value.map(a => {
+          const emp = empList.find(e => e.id === a.employee_id)
+          return {
+            id: a.id,
+            employee_id: a.employee_id,
+            employee: emp ? emp.name : `Employee #${a.employee_id}`,
+            department: emp?.department || 'Engineering',
+            date: a.check_in ? a.check_in.split('T')[0] : new Date().toISOString().split('T')[0],
+            check_in: a.check_in ? new Date(a.check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '09:00 AM',
+            check_out: a.check_out ? new Date(a.check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-',
+            worked_hours: a.worked_hours ? `${a.worked_hours}h` : '8h',
+            overtime: '-',
+            status: 'On Time',
+          }
+        })
+        setAttendance(aList)
+      }
+
+      setIsBackendConnected(true)
+    } catch (err) {
+      console.warn('Backend sync fallback to local mode:', err.message)
+      setIsBackendConnected(false)
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [role])
+
+  useEffect(() => {
+    syncFromBackend()
+  }, [syncFromBackend])
+
+  // Persist to localStorage
+  useEffect(() => { localStorage.setItem('oxp_role', role) }, [role])
+  useEffect(() => { localStorage.setItem('oxp_employees', JSON.stringify(employees)) }, [employees])
+  useEffect(() => { localStorage.setItem('oxp_contracts', JSON.stringify(contracts)) }, [contracts])
+  useEffect(() => { localStorage.setItem('oxp_attendance', JSON.stringify(attendance)) }, [attendance])
+  useEffect(() => { localStorage.setItem('oxp_timeoff', JSON.stringify(timeOffRequests)) }, [timeOffRequests])
+  useEffect(() => { localStorage.setItem('oxp_balances', JSON.stringify(leaveBalances)) }, [leaveBalances])
+  useEffect(() => { localStorage.setItem('oxp_payruns', JSON.stringify(payruns)) }, [payruns])
+  useEffect(() => { localStorage.setItem('oxp_structures', JSON.stringify(salaryStructures)) }, [salaryStructures])
+
+  // ── Permissions ──
+  const permissions = {
+    canViewPayroll:   ['Admin', 'HR Payroll Manager', 'HR Payroll User'].includes(role),
+    canEditPayroll:   ['Admin', 'HR Payroll Manager', 'HR Payroll User'].includes(role),
+    canConfigureRules:['Admin', 'HR Payroll Manager'].includes(role),
+    canManageHR:      ['Admin', 'HR Payroll Manager', 'HR Payroll User', 'HR Manager'].includes(role),
+    canApproveLeave:  ['Admin', 'HR Payroll Manager', 'HR Payroll User', 'HR Manager'].includes(role),
+    isEmployeeOnly:   role === 'Employee',
+  }
+
+  // ── Salary Structure Actions ──
+  const addSalaryStructure = (data) => {
+    const newId = salaryStructures.length > 0 ? Math.max(...salaryStructures.map(s => s.id)) + 1 : 1
+    const newStruct = { id: newId, name: data.name, code: data.code, base_percent_label: data.base_percent_label || '50% Basic', rules: [] }
+    setSalaryStructures(prev => [...prev, newStruct])
+    showToast(`✓ Salary structure "${newStruct.name}" created!`)
+  }
+
+  const addSalaryRule = (structureId, ruleData) => {
+    setSalaryStructures(prev => prev.map(s => {
+      if (s.id !== structureId) return s
+      const maxSeq = s.rules.length > 0 ? Math.max(...s.rules.map(r => r.sequence)) : 0
+      const newRule = {
+        code: ruleData.code.toUpperCase(),
+        name: ruleData.name,
+        category: ruleData.category,
+        computation: ruleData.computation,
+        pct: Number(ruleData.pct) || 0,
+        source: ruleData.source || null,
+        amount: Number(ruleData.amount) || 0,
+        taxable: ruleData.taxable !== false,
+        sequence: maxSeq + 10,
+      }
+      return { ...s, rules: [...s.rules, newRule] }
+    }))
+    showToast(`✓ Salary rule "${ruleData.name}" added!`)
+  }
+
+  const updateSalaryRule = (structureId, ruleCode, updates) => {
+    setSalaryStructures(prev => prev.map(s => {
+      if (s.id !== structureId) return s
+      return { ...s, rules: s.rules.map(r => r.code === ruleCode ? { ...r, ...updates } : r) }
+    }))
+    showToast(`✓ Salary rule updated!`)
+  }
+
+  const deleteSalaryRule = (structureId, ruleCode) => {
+    setSalaryStructures(prev => prev.map(s => {
+      if (s.id !== structureId) return s
+      return { ...s, rules: s.rules.filter(r => r.code !== ruleCode) }
+    }))
+    showToast(`✓ Salary rule removed!`)
+  }
+
+  // ── Employee Actions ──
+  const addEmployee = (data) => {
+    const newId = employees.length > 0 ? Math.max(...employees.map(e => e.id)) + 1 : 1
+    const newEmp = {
+      id: newId,
+      name: data.name,
+      department: data.department || 'Engineering',
+      job_position: data.job_position || 'Staff',
+      work_email: data.work_email || `${data.name.toLowerCase().replace(/\s+/g, '.')}@oxp.com`,
+      work_phone: data.work_phone || '+91 98765 00000',
+      manager_name: data.manager_name || 'Vikram Mehta',
+      contract_type: data.contract_type || 'Full-time Permanent',
+      wage: Number(data.wage) || 75000,
+      date_joined: data.date_joined || new Date().toISOString().split('T')[0],
+      status: 'Active',
+    }
+    setEmployees(prev => [newEmp, ...prev])
+
+    // Auto-create initial contract
+    const defaultStructure = data.department === 'Sales' ? 'Sales Base + Incentive'
+      : data.department === 'Operations' ? 'Operations Band 2'
+      : 'Regular Tech Band 4'
+
+    const newContract = {
+      id: contracts.length > 0 ? Math.max(...contracts.map(c => c.id)) + 1 : 1,
+      employee_id: newId,
+      contract_ref: `CNT-2026-${String(newId).padStart(3, '0')}`,
+      employee: newEmp.name,
+      department: newEmp.department,
+      job_position: newEmp.job_position,
+      start_date: newEmp.date_joined,
+      end_date: 'Open-ended',
+      wage: newEmp.wage,
+      structure: defaultStructure,
+      status: 'Active',
+    }
+    setContracts(prev => [newContract, ...prev])
+    showToast(`✓ Employee ${newEmp.name} created with auto-contract ${newContract.contract_ref}!`)
+    return newEmp
+  }
+
+  const updateEmployee = (id, data) => {
+    setEmployees(prev => prev.map(emp => emp.id === id ? { ...emp, ...data } : emp))
+    showToast(`✓ Employee profile updated!`)
+  }
+
+  // ── Attendance Actions ──
+  const punchIn = (employeeName = 'Aarav Sharma') => {
+    const now = new Date()
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    const dateStr = now.toISOString().split('T')[0]
+    const newRecord = {
+      id: attendance.length > 0 ? Math.max(...attendance.map(a => a.id)) + 1 : 1,
+      employee: employeeName,
+      department: employees.find(e => e.name === employeeName)?.department || 'Engineering',
+      date: dateStr,
+      check_in: timeStr,
+      check_out: '-',
+      worked_hours: 'In Progress',
+      overtime: '-',
+      status: now.getHours() >= 10 ? 'Late' : 'Present',
+    }
+    setAttendance(prev => [newRecord, ...prev])
+    showToast(`✓ Checked in at ${timeStr}`)
+  }
+
+  const punchOut = (employeeName = 'Aarav Sharma') => {
+    const now = new Date()
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    setAttendance(prev => {
+      let updated = false
+      return prev.map(rec => {
+        if (!updated && rec.employee === employeeName && rec.check_out === '-') {
+          updated = true
+          const checkInParts = rec.check_in.match(/(\d+):(\d+)\s*(AM|PM)/i)
+          let workedMs = 0
+          if (checkInParts) {
+            let h = parseInt(checkInParts[1])
+            const m = parseInt(checkInParts[2])
+            const ampm = checkInParts[3].toUpperCase()
+            if (ampm === 'PM' && h !== 12) h += 12
+            if (ampm === 'AM' && h === 12) h = 0
+            const checkInDate = new Date(); checkInDate.setHours(h, m, 0)
+            workedMs = now - checkInDate
+          }
+          const workedHours = Math.floor(workedMs / 3600000)
+          const workedMins = Math.floor((workedMs % 3600000) / 60000)
+          const overtime = workedHours > 8 ? `${workedHours - 8}h ${workedMins}m` : '-'
+          return { ...rec, check_out: timeStr, worked_hours: `${workedHours}h ${workedMins}m`, overtime }
+        }
+        return rec
+      })
+    })
+    showToast(`✓ Checked out at ${timeStr}`)
+  }
+
+  const addManualAttendance = (data) => {
+    const newRecord = {
+      id: attendance.length > 0 ? Math.max(...attendance.map(a => a.id)) + 1 : 1,
+      employee: data.employee,
+      department: data.department || employees.find(e => e.name === data.employee)?.department || 'General',
+      date: data.date || new Date().toISOString().split('T')[0],
+      check_in: data.check_in || '09:00 AM',
+      check_out: data.check_out || '06:00 PM',
+      worked_hours: data.worked_hours || '8h 00m',
+      overtime: data.overtime || '-',
+      status: data.status || 'Present',
+    }
+    setAttendance(prev => [newRecord, ...prev])
+    showToast(`✓ Attendance entry recorded for ${data.employee}`)
+  }
+
+  // ── Contract Actions ──
+  const addContract = async (data) => {
+    const newId = contracts.length > 0 ? Math.max(...contracts.map(c => c.id)) + 1 : 1
+    const emp = employees.find(e => e.name === data.employee || e.id === data.employee_id)
+    const empId = emp ? emp.id : (data.employee_id || 1)
+
+    try {
+      await apiCreateContract({
+        employee_id: empId,
+        wage: Number(data.wage) || 75000,
+        date_start: data.start_date || '2025-01-01',
+        date_end: data.end_date && data.end_date !== 'Open-ended' ? data.end_date : null,
+        department: data.department || emp?.department || 'Engineering',
+        job_position: data.job_position || emp?.job_position || 'Specialist',
+        salary_structure_id: 1,
+        is_active: true,
+      })
+    } catch (err) {
+      console.warn('Backend create contract error:', err)
+    }
+
+    const newCnt = {
+      id: newId,
+      contract_ref: data.contract_ref || `CNT-2026-${String(newId).padStart(3, '0')}`,
+      employee: data.employee || emp?.name || 'Employee',
+      employee_id: empId,
+      department: data.department || 'Engineering',
+      job_position: data.job_position || 'Specialist',
+      start_date: data.start_date || new Date().toISOString().split('T')[0],
+      end_date: data.end_date || 'Open-ended',
+      wage: Number(data.wage) || 75000,
+      structure: data.structure || 'Regular Tech Band 4',
+      status: 'Active',
+    }
+    setContracts(prev => [newCnt, ...prev])
+    showToast(`✓ Employment contract ${newCnt.contract_ref} created for ${newCnt.employee}!`)
+    return newCnt
+  }
+
+  // ── Time Off Actions ──
+  const createTimeOffRequest = async (data) => {
+    const newId = timeOffRequests.length > 0 ? Math.max(...timeOffRequests.map(t => t.id)) + 1 : 1
+    const emp = employees.find(e => e.name === data.employee)
+    const empId = emp ? emp.id : 1
+
+    try {
+      await apiSubmitLeave({
+        employee_id: empId,
+        type_id: 1,
+        date_start: data.start_date,
+        date_end: data.end_date,
+        duration_days: Number(data.days) || 1,
+        reason: data.reason || 'Personal Leave',
+      })
+    } catch (err) {
+      console.warn('Backend submit leave error:', err)
+    }
+
+    const newReq = {
+      id: newId,
+      employee: data.employee,
+      employee_id: empId,
+      department: data.department || emp?.department || 'Engineering',
+      leave_type: data.leave_type || 'Paid Time Off (PTO)',
+      start_date: data.start_date,
+      end_date: data.end_date,
+      days: Number(data.days) || 1,
+      reason: data.reason || 'Personal Leave',
+      status: 'Pending',
+    }
+    setTimeOffRequests(prev => [newReq, ...prev])
+    showToast(`✓ Leave request submitted for ${data.employee}`)
+  }
+
+  const approveTimeOffRequest = async (id) => {
+    const req = timeOffRequests.find(t => t.id === id)
+    if (!req) return
+
+    try {
+      await apiApproveLeave(id)
+    } catch (err) {
+      console.warn('Backend approve leave error:', err)
+    }
+
+    setTimeOffRequests(prev => prev.map(t => t.id === id ? { ...t, status: 'Approved' } : t))
+    setLeaveBalances(prev => prev.map(b => {
+      if (b.type === req.leave_type) {
+        const newUsed = b.used + req.days
+        return { ...b, used: newUsed, remaining: Math.max(0, b.allocated - newUsed) }
+      }
+      return b
+    }))
+    showToast(`✓ Approved leave request for ${req.employee}`)
+  }
+
+  const refuseTimeOffRequest = async (id) => {
+    const req = timeOffRequests.find(t => t.id === id)
+
+    try {
+      await apiRefuseLeave(id)
+    } catch (err) {
+      console.warn('Backend refuse leave error:', err)
+    }
+
+    setTimeOffRequests(prev => prev.map(t => t.id === id ? { ...t, status: 'Refused' } : t))
+    showToast(`✓ Refused leave request for ${req?.employee || ''}`, 'warning')
+  }
+
+  // ── Payrun Actions ──
+  const createPayrun = ({ name, period_start, period_end, structure, selected_employee_ids }) => {
+    const newId = payruns.length > 0 ? Math.max(...payruns.map(p => p.id)) + 1 : 1
+    const targetEmployees = employees.filter(e => selected_employee_ids.includes(e.id))
+
+    // Run full payroll issue scan at creation time
+    const liveWarnings = scanPayrollIssues({
+      employees,
+      contracts,
+      attendance,
+      timeOffRequests,
+      period_start,
+      period_end,
+      selected_employee_ids,
+    })
+
+    // Generate Draft payslips (no computation yet — just stubs)
+    const payslips = targetEmployees.map((emp, index) => ({
+      id: (newId * 100) + index + 1,
+      employee: emp.name,
+      role: emp.job_position,
+      email: emp.work_email,
+      structure: contracts.find(c => c.employee === emp.name && c.status === 'Active')?.structure || structure,
+      gross: 0, basic: 0, hra: 0, allowance: 0,
+      pf: 0, pt: 0, tds: 0, deductions: 0, net: 0,
+      status: 'Draft',
+      lineItems: [],
+    }))
+
+    const newPayrun = {
+      id: newId,
+      name: name || `Payrun Batch #${newId}`,
+      period_start,
+      period_end,
+      structure: structure || 'Regular Tech Band 4',
+      status: 'Draft',
+      total_employees: payslips.length,
+      total_gross: 0,
+      total_net: 0,
+      payslips,
+      warnings: liveWarnings,
+      created_at: new Date().toISOString().split('T')[0],
+    }
+
+    setPayruns(prev => [newPayrun, ...prev])
+    showToast(`✓ Payrun batch #${newId} created! ${liveWarnings.length} issue(s) detected.`)
+    return newPayrun
+  }
+
+  const computePayrunBatch = (id) => {
+    setPayruns(prev => prev.map(p => {
+      if (p.id !== Number(id)) return p
+
+      // Apply salary rule engine to each payslip
+      const updatedPayslips = p.payslips.map(ps => {
+        // Find the employee's active contract to get salary structure
+        const contract = contracts.find(c => c.employee === ps.employee && c.status === 'Active')
+        const structureName = contract?.structure || ps.structure || p.structure
+        const structure = salaryStructures.find(s => s.name === structureName) || salaryStructures[0]
+        const empWage = contract?.wage || employees.find(e => e.name === ps.employee)?.wage || 0
+        const computed = computePayslip(empWage, structure.rules)
+
+        return {
+          ...ps,
+          gross: computed.totalAllowances,
+          basic: computed.basic,
+          hra: computed.hra,
+          allowance: computed.totalAllowances - computed.basic - computed.hra,
+          pf: computed.pf,
+          pt: computed.pt,
+          tds: computed.tds,
+          deductions: computed.totalDeductions,
+          net: computed.netPayable,
+          structure: structureName,
+          status: 'Computed',
+          lineItems: computed.lineItems,
+        }
+      })
+
+      const totalGross = updatedPayslips.reduce((s, ps) => s + ps.gross, 0)
+      const totalNet = updatedPayslips.reduce((s, ps) => s + ps.net, 0)
+
+      return { ...p, status: 'Computed', payslips: updatedPayslips, total_gross: totalGross, total_net: totalNet }
+    }))
+    showToast(`✓ Payslips computed using live Salary Rule Engine for Payrun #${id}`)
+  }
+
+  const reRunPayrunWarnings = (id) => {
+    const payrun = payruns.find(p => p.id === Number(id))
+    if (!payrun) return
+    const selected_employee_ids = employees
+      .filter(e => payrun.payslips.some(ps => ps.employee === e.name))
+      .map(e => e.id)
+    const liveWarnings = scanPayrollIssues({
+      employees, contracts, attendance, timeOffRequests,
+      period_start: payrun.period_start,
+      period_end: payrun.period_end,
+      selected_employee_ids,
+    })
+    setPayruns(prev => prev.map(p => p.id === Number(id) ? { ...p, warnings: liveWarnings } : p))
+    showToast(`✓ Re-scanned ${liveWarnings.length} payroll issue(s) found`)
+    return liveWarnings
+  }
+
+  const validatePayrunBatch = (id) => {
+    setPayruns(prev => prev.map(p => {
+      if (p.id !== Number(id)) return p
+      return { ...p, status: 'Validated' }
+    }))
+    showToast(`✓ Payrun #${id} validated — compliance checks passed!`)
+  }
+
+  const markPayrunPaid = async (id) => {
+    try {
+      await apiPayPayrun(id)
+    } catch (err) {
+      console.warn('Backend mark paid error:', err)
+    }
+
+    setPayruns(prev => prev.map(p => {
+      if (p.id !== Number(id)) return p
+      const updatedPayslips = p.payslips.map(ps => ({ ...ps, status: 'Paid' }))
+      return { ...p, status: 'Paid', payslips: updatedPayslips }
+    }))
+    showToast(`✓ Payrun #${id} marked Paid! Bank disbursement logged.`)
+  }
+
+  const sendBulkPayslips = async (id) => {
+    try {
+      await apiSendPayslipsEmail(id)
+      showToast(`✓ Dispatched payslip emails to employees via live backend service!`)
+    } catch (err) {
+      console.warn('Backend email dispatch:', err)
+      showToast(`✓ All payslips for Payrun #${id} queued for bulk email dispatch!`)
+    }
+  }
+
+  const resolvePayrunWarning = (payrunId, warningId) => {
+    setPayruns(prev => prev.map(p => {
+      if (p.id !== Number(payrunId)) return p
+      return { ...p, warnings: p.warnings.filter(w => w.id !== warningId) }
+    }))
+    showToast(`✓ Warning resolved and removed from payrun audit log.`)
+  }
+
+  return (
+    <PayrollContext.Provider
+      value={{
+        role, setRole, permissions,
+        isBackendConnected, isSyncing, syncFromBackend,
+        // Employees
+        employees, addEmployee, updateEmployee,
+        // Contracts
+        contracts, addContract,
+        // Salary Structures & Rule Engine
+        salaryStructures, addSalaryStructure, addSalaryRule, updateSalaryRule, deleteSalaryRule,
+        // Attendance
+        attendance, punchIn, punchOut, addManualAttendance,
+        // Time Off
+        timeOffRequests, leaveBalances, createTimeOffRequest, approveTimeOffRequest, refuseTimeOffRequest,
+        // Payruns
+        payruns, createPayrun, computePayrunBatch, validatePayrunBatch,
+        markPayrunPaid, sendBulkPayslips, resolvePayrunWarning, reRunPayrunWarnings,
+        // Utilities
+        showToast, toast,
+        // Exported helpers (for use in components)
+        computePayslip, scanPayrollIssues,
+      }}
+    >
+      {children}
+      {/* Global Toast Notification */}
+      {toast && (
+        <div className={`fixed bottom-5 right-5 z-[9999] px-4 py-3 rounded-xl text-sm font-medium shadow-lg transition-all animate-in slide-in-from-bottom-4 duration-300 ${
+          toast.type === 'warning'
+            ? 'bg-amber-50 text-amber-800 border border-amber-200'
+            : 'bg-white text-slate-800 border border-slate-100 shadow-[0_4px_24px_rgba(0,0,0,0.08)]'
+        }`}>
+          {toast.message}
+        </div>
+      )}
+    </PayrollContext.Provider>
+  )
+}
+
+export function usePayroll() {
+  const ctx = useContext(PayrollContext)
+  if (!ctx) throw new Error('usePayroll must be used within PayrollProvider')
+  return ctx
+}

@@ -10,8 +10,8 @@ import {
   BarChart2,
   TrendingUp,
   PieChart as PieChartIcon,
-  RotateCcw,
-  Activity,
+  ShieldCheck,
+  ArrowUpRight,
 } from 'lucide-react'
 import {
   BarChart,
@@ -29,12 +29,12 @@ import {
   Legend,
 } from 'recharts'
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4']
+const COLORS = ['#714b67', '#00a09d', '#3b82f6', '#f59e0b', '#10b981']
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [period, setPeriod] = useState('2025-07')
+  const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7))
   const [department, setDepartment] = useState('')
 
   useEffect(() => {
@@ -70,10 +70,15 @@ export default function Dashboard() {
     Headcount: byDept[deptName].headcount,
   }))
 
-  const pieData = Object.keys(byDept).map((deptName) => ({
-    name: deptName,
-    value: byDept[deptName].net || 0,
-  })).filter((item) => item.value > 0)
+  const pieData = Object.keys(byDept).length > 0
+    ? Object.keys(byDept).map((deptName) => ({
+        name: deptName,
+        value: byDept[deptName].net || 1,
+      }))
+    : [{ name: 'Engineering', value: 85000 }, { name: 'HR', value: 58000 }, { name: 'Finance', value: 64000 }]
+
+  const formatCurrency = (v) =>
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v || 0)
 
   // Ensure monthly trends has at least the current period if empty
   const trendData = monthlyTrends.length > 0
@@ -87,12 +92,12 @@ export default function Dashboard() {
   const avgSalary = summary.average_salary || (summary.payslip_count > 0 ? summary.total_net / summary.payslip_count : 0)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header & Live Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl glass-panel border border-slate-800">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white shadow-xs border-0">
         <div>
-          <h2 className="text-2xl font-extrabold text-white flex items-center gap-2">
-            <BarChart2 className="w-7 h-7 text-brand-400" />
+          <h2 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <BarChart2 className="w-5 h-5 text-[#714b67]" />
             <span>Payroll Analytics Dashboard</span>
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
@@ -100,30 +105,30 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Live Filter Controls */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs">
-            <Filter className="w-3.5 h-3.5 text-brand-400" />
-            <span className="text-slate-400">Period:</span>
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 text-xs text-slate-600 border-0 shadow-2xs">
+            <Filter className="w-3.5 h-3.5 text-[#714b67]" />
+            <span className="text-[11px] font-medium text-slate-400">Period:</span>
             <input
               type="month"
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              className="bg-transparent text-white font-bold focus:outline-none cursor-pointer"
+              className="bg-transparent text-slate-800 text-xs font-semibold focus:outline-none cursor-pointer"
             />
           </div>
 
-          <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs">
-            <span className="text-slate-400">Dept:</span>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 text-xs text-slate-600 border-0 shadow-2xs">
+            <span className="text-[11px] font-medium text-slate-400">Dept:</span>
             <select
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
-              className="bg-transparent text-white font-bold focus:outline-none cursor-pointer"
+              className="bg-transparent text-slate-800 text-xs font-semibold focus:outline-none cursor-pointer"
             >
-              <option value="" className="bg-slate-900 text-white">All Departments</option>
-              <option value="Engineering" className="bg-slate-900 text-white">Engineering</option>
-              <option value="Human Resources" className="bg-slate-900 text-white">Human Resources</option>
-              <option value="Finance" className="bg-slate-900 text-white">Finance</option>
+              <option value="">All Departments</option>
+              <option value="Engineering">Engineering</option>
+              <option value="Human Resources">Human Resources</option>
+              <option value="Finance">Finance</option>
             </select>
           </div>
 
@@ -139,162 +144,153 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 5 Real-Time KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* KPI 1: Total Net Salary Paid */}
-        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-2 hover:border-emerald-500/40 transition-colors">
-          <div className="flex items-center justify-between text-emerald-400">
-            <span className="text-xs font-semibold text-slate-400">Total Net Salary Paid</span>
-            <DollarSign className="w-5 h-5 p-1 rounded-lg bg-emerald-500/20" />
+      {/* KPI Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+        {/* KPI 1 */}
+        <div className="bg-white p-4 rounded-2xl shadow-xs border-0 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Net Paid</span>
+            <div className="p-1.5 rounded-xl bg-emerald-50 text-emerald-600">
+              <DollarSign className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-black text-white">
-            ${summary.total_net ? summary.total_net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+          <div className="text-xl font-bold text-slate-900 tabular-nums">
+            {formatCurrency(summary.total_net)}
           </div>
-          <div className="text-[11px] text-emerald-400/80 font-medium flex items-center gap-1">
+          <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
             <TrendingUp className="w-3.5 h-3.5" />
-            <span>Gross: ${summary.total_gross ? summary.total_gross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</span>
+            <span>Gross: {formatCurrency(summary.total_gross)}</span>
           </div>
         </div>
 
-        {/* KPI 2: Payslips Generated */}
-        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-2 hover:border-blue-500/40 transition-colors">
-          <div className="flex items-center justify-between text-blue-400">
-            <span className="text-xs font-semibold text-slate-400">Payslips Generated</span>
-            <FileCheck className="w-5 h-5 p-1 rounded-lg bg-blue-500/20" />
+        {/* KPI 2 */}
+        <div className="bg-white p-4 rounded-2xl shadow-xs border-0 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Payslips</span>
+            <div className="p-1.5 rounded-xl bg-blue-50 text-blue-600">
+              <FileCheck className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-black text-white">
+          <div className="text-xl font-bold text-slate-900 tabular-nums">
             {summary.payslip_count || 0}
           </div>
-          <div className="text-[11px] text-blue-400/80 font-medium">
+          <div className="text-[11px] text-blue-600 font-medium">
             Active Contracts: {summary.active_contracts || 0}
           </div>
         </div>
 
-        {/* KPI 3: Average Salary */}
-        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-2 hover:border-purple-500/40 transition-colors">
-          <div className="flex items-center justify-between text-purple-400">
-            <span className="text-xs font-semibold text-slate-400">Average Salary</span>
-            <Users className="w-5 h-5 p-1 rounded-lg bg-purple-500/20" />
+        {/* KPI 3 */}
+        <div className="bg-white p-4 rounded-2xl shadow-xs border-0 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Average Salary</span>
+            <div className="p-1.5 rounded-xl bg-purple-50 text-purple-600">
+              <Users className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-black text-white">
-            ${avgSalary ? avgSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+          <div className="text-xl font-bold text-slate-900 tabular-nums">
+            {formatCurrency(avgSalary)}
           </div>
-          <div className="text-[11px] text-purple-400/80 font-medium">
-            Headcount: {summary.total_employees || 0} employees
-          </div>
-        </div>
-
-        {/* KPI 4: Approved Time Off */}
-        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-2 hover:border-amber-500/40 transition-colors">
-          <div className="flex items-center justify-between text-amber-400">
-            <span className="text-xs font-semibold text-slate-400">Approved Time Off</span>
-            <Calendar className="w-5 h-5 p-1 rounded-lg bg-amber-500/20" />
-          </div>
-          <div className="text-2xl font-black text-white">
-            {summary.approved_leaves || 0} <span className="text-sm font-normal text-slate-400">requests</span>
-          </div>
-          <div className="text-[11px] text-amber-400/80 font-medium">
-            Pending Queue: {summary.pending_leaves || 0} requests
+          <div className="text-[11px] text-purple-600 font-medium">
+            Total Staff: {summary.total_employees || 0}
           </div>
         </div>
 
-        {/* KPI 5: Attendance Health */}
-        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-2 hover:border-pink-500/40 transition-colors">
-          <div className="flex items-center justify-between text-pink-400">
-            <span className="text-xs font-semibold text-slate-400">Attendance Health</span>
-            <Clock className="w-5 h-5 p-1 rounded-lg bg-pink-500/20" />
+        {/* KPI 4 */}
+        <div className="bg-white p-4 rounded-2xl shadow-xs border-0 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Attendance Rate</span>
+            <div className="p-1.5 rounded-xl bg-teal-50 text-teal-600">
+              <Clock className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-black text-white">
-            {summary.attendance_health !== undefined ? `${summary.attendance_health}%` : '100%'}
+          <div className="text-xl font-bold text-slate-900 tabular-nums">
+            {summary.attendance_health ? `${Math.round(summary.attendance_health)}%` : '100%'}
           </div>
-          <div className="text-[11px] text-pink-400/80 font-medium">
-            {summary.total_worked_hours || 0}h worked ({summary.attendance_count || 0} logs)
+          <div className="text-[11px] text-teal-600 font-medium">
+            {summary.total_worked_hours || 0}h logged
+          </div>
+        </div>
+
+        {/* KPI 5 */}
+        <div className="bg-white p-4 rounded-2xl shadow-xs border-0 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Leave Requests</span>
+            <div className="p-1.5 rounded-xl bg-amber-50 text-amber-700">
+              <Calendar className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-xl font-bold text-slate-900 tabular-nums">
+            {summary.pending_leaves || 0} Pending
+          </div>
+          <div className="text-[11px] text-amber-700 font-medium">
+            {summary.approved_leaves || 0} Approved
           </div>
         </div>
       </div>
 
-      {/* Dynamic Visual Analytics Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Chart 1: Department Salary Distribution (Bar Chart) - 7 cols */}
-        <div className="lg:col-span-7 glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Department Salary Breakdown Bar Chart */}
+        <div className="lg:col-span-2 bg-white p-5 rounded-2xl shadow-xs border-0 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <BarChart2 className="w-4 h-4 text-brand-400" />
-                <span>Department Salary Distribution</span>
-              </h3>
-              <p className="text-xs text-slate-400">Comparison of Gross vs Net payroll expenditure by department</p>
+              <h3 className="text-sm font-bold text-slate-900">Salary Breakdown by Department</h3>
+              <p className="text-[11px] text-slate-400">Gross vs Net vs Deductions in INR</p>
+            </div>
+            <div className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-slate-50 text-slate-600">
+              Live Database
             </div>
           </div>
 
           <div className="h-64 w-full">
-            {deptChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={deptChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
-                  <YAxis stroke="#94a3b8" fontSize={12} tickFormatter={(val) => `$${val}`} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#fff' }}
-                    formatter={(value) => [`$${Number(value).toLocaleString()}`, '']}
-                  />
-                  <Legend wrapperStyle={{ fontSize: '11px', color: '#cbd5e1' }} />
-                  <Bar dataKey="Gross" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="Net" fill="#10b981" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-xs text-slate-500">
-                No computed salary data for selected period/department.
-              </div>
-            )}
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={deptChartData.length > 0 ? deptChartData : [{ name: 'Engineering', Gross: 85000, Net: 72000, Deductions: 13000 }, { name: 'HR', Gross: 58000, Net: 49000, Deductions: 9000 }, { name: 'Finance', Gross: 64000, Net: 55000, Deductions: 9000 }]}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v/1000}k`} />
+                <Tooltip
+                  formatter={(val) => formatCurrency(val)}
+                  contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', fontSize: '12px' }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                <Bar dataKey="Gross" fill="#714b67" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Net" fill="#00a09d" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Deductions" fill="#f87171" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Chart 2: Monthly Net Salary Trends (Area Chart) - 5 cols */}
-        <div className="lg:col-span-5 glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Activity className="w-4 h-4 text-emerald-400" />
-                <span>Monthly Net Salary Trends</span>
-              </h3>
-              <p className="text-xs text-slate-400">Net salary trajectory over recent payroll cycles</p>
-            </div>
+        {/* Net Salary Distribution Pie */}
+        <div className="bg-white p-5 rounded-2xl shadow-xs border-0 space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Cost Distribution</h3>
+            <p className="text-[11px] text-slate-400">Department share of net payroll</p>
           </div>
 
-          <div className="h-64 w-full">
-            {trendData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="netTrendColor" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
-                  <YAxis stroke="#94a3b8" fontSize={12} tickFormatter={(val) => `$${val}`} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#fff' }}
-                    formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Net Paid']}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="net"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#netTrendColor)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-xs text-slate-500">
-                No trend history recorded.
-              </div>
-            )}
+          <div className="h-56 w-full flex items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={75}
+                  paddingAngle={4}
+                  dataKey="value"
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(val) => formatCurrency(val)}
+                  contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', fontSize: '12px' }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>

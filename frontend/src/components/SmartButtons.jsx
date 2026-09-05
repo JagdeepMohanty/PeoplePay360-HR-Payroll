@@ -12,7 +12,8 @@ export default function SmartButtons({ employee }) {
       count: employee.contracts_count ?? 0,
       unit: '',
       icon: FileText,
-      color: 'from-blue-500/20 to-indigo-500/20 border-blue-500/40 text-blue-300 hover:border-blue-400 hover:bg-blue-500/30',
+      bg: 'bg-blue-50/80 hover:bg-blue-100/70 text-blue-700',
+      iconBg: 'bg-blue-100/80 text-blue-600',
       path: `/contracts?employee_id=${employee.id}`,
     },
     {
@@ -20,7 +21,8 @@ export default function SmartButtons({ employee }) {
       count: employee.attendances_count ?? 0,
       unit: '',
       icon: Clock,
-      color: 'from-purple-500/20 to-pink-500/20 border-purple-500/40 text-purple-300 hover:border-purple-400 hover:bg-purple-500/30',
+      bg: 'bg-purple-50/80 hover:bg-purple-100/70 text-purple-700',
+      iconBg: 'bg-purple-100/80 text-purple-600',
       path: `/attendance?employee_id=${employee.id}`,
     },
     {
@@ -28,7 +30,8 @@ export default function SmartButtons({ employee }) {
       count: employee.leaves_count ?? 0,
       unit: '',
       icon: Calendar,
-      color: 'from-amber-500/20 to-orange-500/20 border-amber-500/40 text-amber-300 hover:border-amber-400 hover:bg-amber-500/30',
+      bg: 'bg-amber-50/80 hover:bg-amber-100/70 text-amber-800',
+      iconBg: 'bg-amber-100/80 text-amber-700',
       path: `/time-off?employee_id=${employee.id}`,
     },
     {
@@ -36,7 +39,8 @@ export default function SmartButtons({ employee }) {
       count: employee.leave_balance ?? 0,
       unit: 'd',
       icon: PieChart,
-      color: 'from-emerald-500/20 to-teal-500/20 border-emerald-500/40 text-emerald-300 hover:border-emerald-400 hover:bg-emerald-500/30',
+      bg: 'bg-emerald-50/80 hover:bg-emerald-100/70 text-emerald-700',
+      iconBg: 'bg-emerald-100/80 text-emerald-600',
       path: `/time-off?employee_id=${employee.id}`,
     },
   ]
@@ -51,20 +55,19 @@ export default function SmartButtons({ employee }) {
             key={idx}
             type="button"
             onClick={() => navigate(btn.path)}
-            title={`View pre-filtered ${btn.label} for ${employee.full_name || 'employee'}`}
-            className={`flex items-center justify-between p-3.5 rounded-xl bg-gradient-to-r ${btn.color} border backdrop-blur-md transition-all duration-200 hover:scale-[1.02] shadow-sm text-left group`}
+            className={`flex items-center justify-between p-3.5 rounded-2xl ${btn.bg} border-0 shadow-xs transition-all duration-150 hover:-translate-y-0.5 text-left group cursor-pointer`}
           >
-            <div className="flex items-center space-x-3">
-              <div className="p-2 rounded-lg bg-slate-900/70 group-hover:scale-110 transition-transform">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-xl ${btn.iconBg} shadow-2xs`}>
                 <Icon className="w-4 h-4" />
               </div>
               <div>
-                <div className="text-xs font-bold tracking-tight">
-                  {btn.label} ({countDisplay})
+                <div className="text-[10px] uppercase tracking-wider font-bold opacity-75">
+                  {btn.label}
                 </div>
-                <div className="text-[11px] text-slate-400 flex items-center gap-1 group-hover:text-white transition-colors">
-                  <span>Filtered view</span>
-                  <ExternalLink className="w-2.5 h-2.5 opacity-70" />
+                <div className="text-base font-black leading-tight text-slate-900 mt-0.5">
+                  {btn.count}
+                  {btn.unit}
                 </div>
               </div>
             </div>

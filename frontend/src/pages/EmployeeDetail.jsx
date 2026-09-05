@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getEmployee, updateEmployee } from '../api/employees'
+import { getEmployee } from '../api/employees'
 import SmartButtons from '../components/SmartButtons'
 import {
-  Users,
   ArrowLeft,
   Mail,
   Building,
@@ -12,9 +11,10 @@ import {
   Calendar,
   CheckCircle2,
   AlertCircle,
-  Edit2,
-  Save,
-  X,
+  FileText,
+  Clock,
+  Receipt,
+  UserCheck
 } from 'lucide-react'
 
 export default function EmployeeDetail() {
@@ -79,7 +79,7 @@ export default function EmployeeDetail() {
 
   if (loading) {
     return (
-      <div className="p-8 text-center text-slate-400 text-sm">
+      <div className="p-12 text-center text-slate-400 text-sm font-medium animate-pulse">
         Loading employee profile hub...
       </div>
     )
@@ -87,16 +87,23 @@ export default function EmployeeDetail() {
 
   if (!employee) {
     return (
-      <div className="p-8 text-center text-red-400 text-sm space-y-4">
-        <div>Employee record not found.</div>
-        <button onClick={() => navigate('/employees')} className="px-4 py-2 rounded-xl bg-slate-800 text-white text-xs font-semibold">
+      <div className="p-10 text-center space-y-4 bg-white rounded-2xl shadow-xs border-0">
+        <div className="w-12 h-12 mx-auto rounded-full bg-red-50 text-red-500 flex items-center justify-center">
+          <AlertCircle className="w-6 h-6" />
+        </div>
+        <div className="text-slate-800 font-semibold">Employee record not found.</div>
+        <button
+          onClick={() => navigate('/employees')}
+          className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer border-0"
+        >
           Back to Directory
         </button>
       </div>
     )
   }
 
-  const empName = employee.full_name || `${employee.first_name} ${employee.last_name}`
+  const empName = employee.full_name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 'Employee'
+  const initials = `${employee.first_name?.[0] || ''}${employee.last_name?.[0] || ''}`.toUpperCase() || 'EM'
 
   return (
     <div className="space-y-6">
@@ -104,118 +111,83 @@ export default function EmployeeDetail() {
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/employees')}
-          className="flex items-center space-x-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+          className="flex items-center space-x-2 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Directory</span>
+          <span>Back to Employee Directory</span>
         </button>
 
-        <div className="flex items-center space-x-3">
-          <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+        <div className="flex items-center gap-2">
+          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
             employee.is_active
-              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-              : 'bg-red-500/20 text-red-300 border-red-500/30'
+              ? 'bg-emerald-50 text-emerald-700'
+              : 'bg-red-50 text-red-600'
           }`}>
-            {employee.is_active ? 'ACTIVE EMPLOYEE' : 'INACTIVE'}
+            {employee.is_active ? 'Active' : 'Archived'}
           </span>
-
-          {!isEditing ? (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-brand-600/30 hover:bg-brand-600 text-white font-bold text-xs border border-brand-500/30 shadow-sm transition-colors"
-            >
-              <Edit2 className="w-3.5 h-3.5" />
-              <span>Edit Form</span>
-            </button>
-          ) : (
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setIsEditing(false)}
-                className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs"
-              >
-                <X className="w-3.5 h-3.5" />
-                <span>Cancel</span>
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-500/20"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>{saving ? 'Saving...' : 'Save Profile'}</span>
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
-      {notification && (
-        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>{notification}</span>
-        </div>
-      )}
-
-      {/* Header Info Panel */}
-      <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+      {/* Header Info Card */}
+      <div className="bg-white p-6 rounded-2xl shadow-xs border-0 space-y-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 text-white font-black text-2xl flex items-center justify-center shadow-lg shadow-brand-500/20">
-              {employee.first_name?.[0]}
-              {employee.last_name?.[0]}
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#714b67] to-[#8a5d7e] text-white font-black text-2xl flex items-center justify-center shadow-xs">
+              {initials}
             </div>
             <div>
-              <h2 className="text-2xl font-extrabold text-white">{empName}</h2>
-              <p className="text-sm font-semibold text-brand-400">{employee.job_position || 'Staff Member'} &bull; {employee.department || 'General'}</p>
+              <h2 className="text-2xl font-bold text-slate-900">{empName}</h2>
+              <p className="text-sm font-medium text-[#714b67]">{employee.job_position || 'Staff Member'}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{employee.department || 'General'}</p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/contracts')}
+              className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border-0"
+            >
+              <FileText className="w-3.5 h-3.5 text-[#714b67]" />
+              <span>Contracts</span>
+            </button>
+            <button
+              onClick={() => navigate('/attendance')}
+              className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border-0"
+            >
+              <Clock className="w-3.5 h-3.5 text-[#00A09D]" />
+              <span>Attendance</span>
+            </button>
+            <button
+              onClick={() => navigate('/payruns')}
+              className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border-0"
+            >
+              <Receipt className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Payslips</span>
+            </button>
           </div>
         </div>
 
         {/* SmartButtons Bar: dynamic counts routed to pre-filtered modules */}
         <SmartButtons employee={employee} />
 
-        {/* Unified Employee Form: View & Edit Modes */}
-        {!isEditing ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-800">
-            <div className="space-y-3 p-4 rounded-xl bg-slate-900/50 border border-slate-800 text-xs">
-              <h4 className="font-bold text-slate-300 uppercase tracking-wider">Identity & Role Details</h4>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> Email</span>
-                <span className="text-white font-semibold">{employee.email}</span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 flex items-center gap-1.5"><Building className="w-3.5 h-3.5" /> Department</span>
-                <span className="text-white font-semibold">{employee.department || 'Unassigned'}</span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5" /> Job Position</span>
-                <span className="text-white font-semibold">{employee.job_position}</span>
-              </div>
+        {/* Detailed Form View Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+          <div className="space-y-3 p-4 rounded-xl bg-slate-50/70 text-xs">
+            <h4 className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Identity & Role Details</h4>
+            
+            <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+              <span className="text-slate-500 flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-slate-400" /> Email</span>
+              <span className="text-slate-900 font-semibold">{employee.email}</span>
             </div>
 
-            <div className="space-y-3 p-4 rounded-xl bg-slate-900/50 border border-slate-800 text-xs">
-              <h4 className="font-bold text-slate-300 uppercase tracking-wider">Work Schedule & Financials</h4>
+            <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+              <span className="text-slate-500 flex items-center gap-1.5"><Building className="w-3.5 h-3.5 text-slate-400" /> Department</span>
+              <span className="text-slate-900 font-semibold">{employee.department || 'Unassigned'}</span>
+            </div>
 
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Working Schedule</span>
-                <span className="text-white font-semibold">Standard 40h Full-Time</span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5" /> Bank Account</span>
-                {employee.bank_account ? (
-                  <span className="text-emerald-400 font-mono font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> {employee.bank_account}
-                  </span>
-                ) : (
-                  <span className="text-amber-400 font-bold flex items-center gap-1">
-                    <AlertCircle className="w-3.5 h-3.5" /> Missing Bank Account
-                  </span>
-                )}
-              </div>
+            <div className="flex items-center justify-between py-1">
+              <span className="text-slate-500 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5 text-slate-400" /> Job Position</span>
+              <span className="text-slate-900 font-semibold">{employee.job_position}</span>
             </div>
           </div>
         ) : (
@@ -223,112 +195,25 @@ export default function EmployeeDetail() {
             <div className="space-y-3 p-4 rounded-xl bg-slate-900/50 border border-brand-500/40">
               <h4 className="font-bold text-brand-300 uppercase tracking-wider">Edit Identity & Role</h4>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-slate-400 font-semibold mb-1">First Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.first_name}
-                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white focus:border-brand-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 font-semibold mb-1">Last Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.last_name}
-                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white focus:border-brand-500 focus:outline-none"
-                  />
-                </div>
-              </div>
+          <div className="space-y-3 p-4 rounded-xl bg-slate-50/70 text-xs">
+            <h4 className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Work Schedule & Financials</h4>
 
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1">Work Email</label>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white focus:border-brand-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1">Department</label>
-                <select
-                  value={formData.department}
-                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white focus:border-brand-500 focus:outline-none"
-                >
-                  <option value="Engineering">Engineering</option>
-                  <option value="Human Resources">Human Resources</option>
-                  <option value="Finance">Finance</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1">Job Position</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.job_position}
-                  onChange={(e) => setFormData({ ...formData, job_position: e.target.value })}
-                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white focus:border-brand-500 focus:outline-none"
-                />
-              </div>
+            <div className="flex items-center justify-between py-1 border-b border-slate-200/50">
+              <span className="text-slate-500 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-slate-400" /> Working Schedule</span>
+              <span className="text-slate-900 font-semibold">Standard 40h Full-Time</span>
             </div>
 
-            <div className="space-y-3 p-4 rounded-xl bg-slate-900/50 border border-brand-500/40">
-              <h4 className="font-bold text-brand-300 uppercase tracking-wider">Edit Financials & Status</h4>
-
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1">Bank Account Number (IBAN / ACH)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. US44CHAS92019482"
-                  value={formData.bank_account}
-                  onChange={(e) => setFormData({ ...formData, bank_account: e.target.value })}
-                  className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono focus:border-brand-500 focus:outline-none"
-                />
-                <span className="text-[10px] text-slate-400 mt-1 block">
-                  Required for automated bank wire transfer and pre-validation checks.
+            <div className="flex items-center justify-between py-1">
+              <span className="text-slate-500 flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5 text-slate-400" /> Bank Account</span>
+              {employee.bank_account ? (
+                <span className="text-emerald-700 font-mono font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> {employee.bank_account}
                 </span>
-              </div>
-
-              <div className="pt-4 flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="emp_active"
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="rounded border-slate-700 text-brand-600 focus:ring-brand-500"
-                />
-                <label htmlFor="emp_active" className="text-slate-300 font-semibold cursor-pointer">
-                  Active Status (Eligible for contract & payroll generation)
-                </label>
-              </div>
-
-              <div className="pt-6 flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-md shadow-emerald-500/20"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>{saving ? 'Saving...' : 'Save Changes'}</span>
-                </button>
-              </div>
+              ) : (
+                <span className="text-amber-600 font-bold flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" /> Missing Bank Account
+                </span>
+              )}
             </div>
           </form>
         )}

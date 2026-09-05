@@ -6,7 +6,7 @@ import {
   computePayrun,
   validatePayrun,
   confirmPayrun,
-  downloadPayslipPdfBlob,
+  payPayrun,
   sendPayslipsEmail,
 } from '../api/payruns'
 
@@ -21,9 +21,11 @@ import {
   Send,
   Printer,
   FileText,
-  Download,
   AlertCircle,
-  ShieldAlert,
+  CreditCard,
+  Search,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 
 export default function PayrunProcessing() {
@@ -41,7 +43,10 @@ export default function PayrunProcessing() {
   const [selectedPayslip, setSelectedPayslip] = useState(null)
   const [notification, setNotification] = useState('')
 
-  const isPayrollAuthorized = ['ADMIN', 'HR_PAYROLL_USER', 'HR_PAYROLL_MANAGER'].includes(activeRole)
+  // Search & Pagination
+  const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 15
 
   useEffect(() => {
     if (isPayrollAuthorized) {
@@ -77,11 +82,13 @@ export default function PayrunProcessing() {
     try {
       const computedSlips = await computePayrun(id)
       setPayslips(computedSlips || [])
-      setNotification('Payrun re-computed idempotently!')
-      setTimeout(() => setNotification(''), 3000)
+      setNotification('Payrun re-computed successfully using active salary rules!')
+      setTimeout(() => setNotification(''), 3500)
 
       const valRes = await validatePayrun(id)
       setWarnings(valRes.warnings || [])
+      const updatedPr = await getPayrun(id)
+      setPayrun(updatedPr)
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to compute payrun.')
     } finally {
@@ -94,8 +101,8 @@ export default function PayrunProcessing() {
     try {
       const valRes = await validatePayrun(id)
       setWarnings(valRes.warnings || [])
-      setNotification(`Validation complete. Found ${valRes.warning_count || 0} warning(s).`)
-      setTimeout(() => setNotification(''), 3000)
+      setNotification(`Validation complete. Detected ${valRes.warning_count || 0} compliance notice(s).`)
+      setTimeout(() => setNotification(''), 3500)
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to validate payrun.')
     } finally {
@@ -103,15 +110,15 @@ export default function PayrunProcessing() {
     }
   }
 
-  const handleConfirm = async () => {
+  const handleMarkPaid = async () => {
     setActionLoading(true)
     try {
-      const updatedPr = await confirmPayrun(id)
+      const updatedPr = await payPayrun(id)
       setPayrun(updatedPr)
-      setNotification('Payrun confirmed and marked as VALIDATED!')
-      setTimeout(() => setNotification(''), 3000)
+      setNotification('Payrun finalized and status updated to PAID!')
+      setTimeout(() => setNotification(''), 3500)
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to confirm payrun.')
+      alert(err.response?.data?.detail || 'Failed to mark payrun as paid.')
     } finally {
       setActionLoading(false)
     }
@@ -121,38 +128,12 @@ export default function PayrunProcessing() {
     setActionLoading(true)
     try {
       const res = await sendPayslipsEmail(id)
-      setNotification(`Success! ${res.message || 'Dispatched payslip emails to employees.'}`)
-      setTimeout(() => setNotification(''), 4000)
+      setNotification(res.message || `Dispatched payslip emails to ${res.sent_count || 0} employees.`)
+      setTimeout(() => setNotification(''), 4500)
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to dispatch payslip emails.')
     } finally {
       setActionLoading(false)
-    }
-  }
-
-  const handlePrintPdf = async (e, slipId, empName) => {
-    e.stopPropagation()
-    setPrintingSlipId(slipId)
-    try {
-      const blob = await downloadPayslipPdfBlob(slipId)
-      const blobUrl = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
-      
-      // Open in new tab for direct browser PDF preview and print
-      const printWindow = window.open(blobUrl, '_blank')
-      if (!printWindow) {
-        // Fallback for pop-up blockers: trigger direct file download
-        const link = document.createElement('a')
-        link.href = blobUrl
-        link.download = `payslip_${empName.replace(/\s+/g, '_')}_${slipId}.pdf`
-        document.body.appendChild(link)
-        link.click()
-        link.remove()
-      }
-    } catch (err) {
-      console.error('Failed to print PDF payslip:', err)
-      alert('Failed to retrieve PDF payslip stream.')
-    } finally {
-      setPrintingSlipId(null)
     }
   }
 
@@ -162,7 +143,11 @@ export default function PayrunProcessing() {
 
   const getEmpName = (empId) => {
     const emp = getEmpObj(empId)
-    return emp ? emp.full_name || `${emp.first_name} ${emp.last_name}` : `Employee #${empId}`
+    return emp ? emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() : `Employee #${empId}`
+  }
+
+  const formatCurrency = (val) => {
+    return `₹${Number(val || 0).toLocaleString('en-IN')}`
   }
 
   if (!isPayrollAuthorized) {
@@ -187,17 +172,23 @@ export default function PayrunProcessing() {
 
   if (loading) {
     return (
-      <div className="p-8 text-center text-slate-400 text-sm">
-        Loading Payrun Batch Processor...
+      <div className="p-12 text-center text-slate-400 text-sm font-medium animate-pulse">
+        Loading Payrun Batch Processor & Computing Salary Engine Rules...
       </div>
     )
   }
 
   if (!payrun) {
     return (
-      <div className="p-8 text-center text-red-400 text-sm space-y-4">
-        <div>Payrun batch not found.</div>
-        <button onClick={() => navigate('/payruns')} className="px-4 py-2 rounded-xl bg-slate-800 text-white text-xs font-semibold">
+      <div className="p-10 text-center space-y-4 bg-white rounded-2xl shadow-xs border-0">
+        <div className="w-12 h-12 mx-auto rounded-full bg-red-50 text-red-500 flex items-center justify-center">
+          <AlertCircle className="w-6 h-6" />
+        </div>
+        <div className="text-slate-800 font-semibold">Payrun batch not found.</div>
+        <button
+          onClick={() => navigate('/payruns')}
+          className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer border-0"
+        >
           Back to Payruns
         </button>
       </div>
@@ -208,30 +199,48 @@ export default function PayrunProcessing() {
   const totalNet = payslips.reduce((acc, s) => acc + (s.net || 0), 0)
   const totalDeductions = payslips.reduce((acc, s) => acc + (s.deductions || 0), 0)
 
+  // Filtered & Paginated list
+  const filteredPayslips = payslips.filter((slip) => {
+    const emp = getEmpObj(slip.employee_id)
+    const name = getEmpName(slip.employee_id).toLowerCase()
+    const dept = (emp?.department || '').toLowerCase()
+    const q = searchQuery.toLowerCase()
+    return name.includes(q) || dept.includes(q)
+  })
+
+  const totalPages = Math.ceil(filteredPayslips.length / pageSize) || 1
+  const paginatedPayslips = filteredPayslips.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       {/* Back Link & Title */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/payruns')}
-          className="flex items-center space-x-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+          className="flex items-center space-x-2 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Payruns Batch List</span>
+          <span>Back to Payrun Batches</span>
         </button>
 
-        <span className="px-3 py-1 rounded-full text-xs font-bold bg-brand-500/20 text-brand-300 border border-brand-500/30">
-          Batch #{payrun.id} &bull; {payrun.status}
+        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+          payrun.status === 'PAID'
+            ? 'bg-emerald-50 text-emerald-700'
+            : payrun.status === 'VALIDATED'
+            ? 'bg-purple-50 text-[#714b67]'
+            : 'bg-amber-50 text-amber-700'
+        }`}>
+          Batch #{payrun.id} • {payrun.status}
         </span>
       </div>
 
       {/* Header Banner & Action Bar */}
-      <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+      <div className="bg-white p-6 rounded-2xl shadow-xs border-0 space-y-6">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-extrabold text-white">{payrun.name || `Payrun #${payrun.id}`}</h2>
+            <h2 className="text-2xl font-bold text-slate-900">{payrun.name || `Payrun #${payrun.id}`}</h2>
             <p className="text-xs text-slate-400 mt-1">
-              Pay Period: <strong className="text-white">{payrun.period_start} &rarr; {payrun.period_end}</strong> &bull; Structure: <strong className="text-brand-300">Standard Monthly</strong>
+              Pay Period: <strong className="text-slate-700 font-semibold">{payrun.period_start} → {payrun.period_end}</strong> • Structure: <strong className="text-[#714b67] font-semibold">Regular Monthly</strong>
             </p>
           </div>
 
@@ -240,8 +249,7 @@ export default function PayrunProcessing() {
             <button
               onClick={handleCompute}
               disabled={actionLoading}
-              title="Idempotently re-compute salary rules for this payrun"
-              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-blue-600/30 hover:bg-blue-600 text-white text-xs font-bold border border-blue-500/40 shadow-sm transition-colors"
+              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition-colors cursor-pointer border-0"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${actionLoading ? 'animate-spin' : ''}`} />
               <span>Compute</span>
@@ -250,28 +258,25 @@ export default function PayrunProcessing() {
             <button
               onClick={handleValidate}
               disabled={actionLoading}
-              title="Run Guardian anomaly pre-validation checks"
-              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600 text-white text-xs font-bold border border-purple-500/40 shadow-sm transition-colors"
+              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#714b67] text-xs font-semibold transition-colors cursor-pointer border-0"
             >
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Validate</span>
             </button>
 
             <button
-              onClick={handleConfirm}
+              onClick={handleMarkPaid}
               disabled={actionLoading}
-              title="Confirm and mark batch as validated/paid"
-              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition-colors"
+              className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer border-0"
             >
-              <CheckCircle2 className="w-3.5 h-3.5" />
+              <CreditCard className="w-3.5 h-3.5" />
               <span>Mark Paid</span>
             </button>
 
             <button
               onClick={handleSendPayslips}
-              disabled={actionLoading || payslips.length === 0}
-              title="Dispatch generated PDF payslips directly to employee emails"
-              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-500/20 disabled:opacity-50 transition-colors"
+              disabled={actionLoading}
+              className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-[#714b67] hover:bg-[#5e3d55] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer border-0"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Send Payslips</span>
@@ -280,29 +285,29 @@ export default function PayrunProcessing() {
         </div>
 
         {/* Totals Summary */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-800 text-xs">
-          <div>
-            <span className="text-slate-400 block">Total Payslips</span>
-            <strong className="text-white text-base">{payslips.length}</strong>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-100">
+          <div className="p-3.5 rounded-xl bg-slate-50/70">
+            <span className="text-[11px] font-medium text-slate-400 block">Total Payslips</span>
+            <strong className="text-slate-900 text-lg font-bold">{payslips.length}</strong>
           </div>
-          <div>
-            <span className="text-slate-400 block">Total Gross Salary</span>
-            <strong className="text-blue-300 text-base">${totalGross.toFixed(2)}</strong>
+          <div className="p-3.5 rounded-xl bg-slate-50/70">
+            <span className="text-[11px] font-medium text-slate-400 block">Total Gross Salary</span>
+            <strong className="text-slate-900 text-lg font-bold">{formatCurrency(totalGross)}</strong>
           </div>
-          <div>
-            <span className="text-slate-400 block">Total Deductions</span>
-            <strong className="text-amber-300 text-base">${totalDeductions.toFixed(2)}</strong>
+          <div className="p-3.5 rounded-xl bg-slate-50/70">
+            <span className="text-[11px] font-medium text-slate-400 block">Total Deductions</span>
+            <strong className="text-rose-600 text-lg font-bold">{formatCurrency(totalDeductions)}</strong>
           </div>
-          <div>
-            <span className="text-slate-400 block">Total Net Payable</span>
-            <strong className="text-emerald-400 text-base">${totalNet.toFixed(2)}</strong>
+          <div className="p-3.5 rounded-xl bg-emerald-50/60">
+            <span className="text-[11px] font-medium text-emerald-700 block">Total Net Payable</span>
+            <strong className="text-emerald-700 text-lg font-bold">{formatCurrency(totalNet)}</strong>
           </div>
         </div>
       </div>
 
       {notification && (
-        <div className="p-3 rounded-xl bg-brand-500/10 border border-brand-500/30 text-brand-300 text-xs font-semibold flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-brand-400" />
+        <div className="p-4 rounded-xl bg-purple-50 text-[#714b67] text-xs font-semibold flex items-center gap-2 shadow-xs border-0 animate-fade-in">
+          <CheckCircle2 className="w-4 h-4 text-[#714b67]" />
           <span>{notification}</span>
         </div>
       )}
@@ -310,77 +315,118 @@ export default function PayrunProcessing() {
       {/* Payroll Guardian Operational Warning Banner */}
       <GuardianWarningBanner warnings={warnings} />
 
-      {/* Generated Payslips Summary Table */}
-      <div className="overflow-hidden rounded-2xl glass-panel border border-slate-800 shadow-xl">
-        <div className="px-4 py-3 bg-slate-900/60 border-b border-slate-800 font-bold text-xs text-white flex items-center justify-between">
-          <span>Itemized Generated Payslips ({payslips.length})</span>
-          <span className="text-[11px] text-slate-400 font-normal">Click any payslip row to open itemized breakdown modal</span>
+      {/* Generated Payslips Summary Table with Search & Pagination */}
+      <div className="bg-white rounded-2xl shadow-xs border-0 overflow-hidden">
+        <div className="px-6 py-4 bg-slate-50/50 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <span className="font-bold text-xs text-slate-900 block">
+              Itemized Generated Payslips ({filteredPayslips.length} of {payslips.length})
+            </span>
+            <span className="text-[11px] text-slate-400 font-normal">
+              Showing page {currentPage} of {totalPages} • Click any row or button to view itemized breakdown
+            </span>
+          </div>
+
+          {/* Quick Search */}
+          <div className="relative w-full sm:w-64">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search payslip..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setCurrentPage(1)
+              }}
+              className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-800 outline-none focus:border-[#714b67] shadow-2xs"
+            />
+          </div>
         </div>
-        <table className="w-full text-left text-xs">
-          <thead className="bg-slate-900 text-slate-400 uppercase font-semibold border-b border-slate-800">
-            <tr>
-              <th className="px-4 py-3">Employee</th>
-              <th className="px-4 py-3">Basic Pay</th>
-              <th className="px-4 py-3">Allowances</th>
-              <th className="px-4 py-3">Gross Salary</th>
-              <th className="px-4 py-3">Deductions</th>
-              <th className="px-4 py-3">Net Payable</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800/80 text-slate-200">
-            {payslips.map((slip) => {
-              const emp = getEmpObj(slip.employee_id)
-              const empName = getEmpName(slip.employee_id)
-              const isPrinting = printingSlipId === slip.id
 
-              return (
-                <tr
-                  key={slip.id}
-                  onClick={() => setSelectedPayslip(slip)}
-                  className="hover:bg-slate-900/60 cursor-pointer transition-colors group"
-                >
-                  <td className="px-4 py-3 font-bold text-white group-hover:text-brand-300">
-                    {empName}
-                    <span className="block text-[10px] text-slate-400 font-normal">{emp?.department}</span>
-                  </td>
-                  <td className="px-4 py-3">${slip.basic?.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-blue-300">+${slip.allowances?.toFixed(2)}</td>
-                  <td className="px-4 py-3 font-semibold text-brand-200">${slip.gross?.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-amber-300">-${slip.deductions?.toFixed(2)}</td>
-                  <td className="px-4 py-3 font-black text-emerald-400 text-sm">${slip.net?.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end space-x-2">
-                      {/* Direct Print PDF action */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 text-slate-500 uppercase font-semibold text-[11px] tracking-wider">
+              <tr>
+                <th className="px-6 py-3.5">Employee</th>
+                <th className="px-6 py-3.5">Basic Pay</th>
+                <th className="px-6 py-3.5">Allowances</th>
+                <th className="px-6 py-3.5">Gross Salary</th>
+                <th className="px-6 py-3.5">Deductions</th>
+                <th className="px-6 py-3.5">Net Payable</th>
+                <th className="px-6 py-3.5 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              {paginatedPayslips.map((slip) => {
+                const emp = getEmpObj(slip.employee_id)
+                return (
+                  <tr
+                    key={slip.id}
+                    onClick={() => setSelectedPayslip(slip)}
+                    className="hover:bg-slate-50/60 cursor-pointer transition-colors group"
+                  >
+                    <td className="px-6 py-4 font-bold text-slate-900 group-hover:text-[#714b67] transition-colors">
+                      {getEmpName(slip.employee_id)}
+                      <span className="block text-[10px] text-slate-400 font-normal mt-0.5">{emp?.department}</span>
+                    </td>
+                    <td className="px-6 py-4 font-medium text-slate-700">{formatCurrency(slip.basic)}</td>
+                    <td className="px-6 py-4 font-medium text-[#00A09D]">+{formatCurrency(slip.allowances)}</td>
+                    <td className="px-6 py-4 font-bold text-slate-900">{formatCurrency(slip.gross)}</td>
+                    <td className="px-6 py-4 font-medium text-rose-600">-{formatCurrency(slip.deductions)}</td>
+                    <td className="px-6 py-4 font-bold text-emerald-700 text-sm">{formatCurrency(slip.net)}</td>
+                    <td className="px-6 py-4 text-right">
                       <button
-                        type="button"
-                        onClick={(e) => handlePrintPdf(e, slip.id, empName)}
-                        disabled={isPrinting}
-                        title="Print / Preview PDF Payslip"
-                        className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 hover:text-white font-bold border border-indigo-500/40 text-xs transition-colors shadow-sm"
-                      >
-                        <Printer className={`w-3.5 h-3.5 ${isPrinting ? 'animate-spin' : ''}`} />
-                        <span>{isPrinting ? 'Printing...' : 'Print PDF'}</span>
-                      </button>
-
-                      {/* View itemized details modal */}
-                      <button
-                        type="button"
                         onClick={(e) => {
                           e.stopPropagation()
                           setSelectedPayslip(slip)
                         }}
-                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold border border-slate-700 text-xs transition-colors"
+                        className="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-[#714b67] hover:text-white text-slate-700 font-semibold text-xs transition-colors cursor-pointer border-0"
                       >
                         View Details
                       </button>
-                    </div>
+                    </td>
+                  </tr>
+                )
+              })}
+
+              {paginatedPayslips.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-slate-400 text-xs">
+                    No payslips found matching &ldquo;{searchQuery}&rdquo;.
                   </td>
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="px-6 py-3.5 bg-slate-50/40 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span className="text-slate-400 font-medium">
+              Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, filteredPayslips.length)} of {filteredPayslips.length}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="px-3 py-1 font-bold text-slate-800">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Itemized Payslip Modal */}

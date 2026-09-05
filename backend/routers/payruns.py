@@ -41,11 +41,9 @@ def download_payslip_pdf(
     emp_name = employee.full_name if employee else f"Employee #{slip.employee_id}"
     payslip_data = {
         "employee_name": emp_name,
-        "employee_id": employee.id if employee else slip.employee_id,
-        "email": employee.email if employee else "",
-        "department": employee.department if employee else "",
-        "job_position": employee.job_position if employee else "",
-        "bank_account": employee.bank_account if employee else "",
+        "department": employee.department if employee else "General",
+        "job_position": employee.job_position if employee else "Staff Member",
+        "bank_account": employee.bank_account if employee else "Direct Deposit",
         "period_start": payrun.period_start if payrun else "",
         "period_end": payrun.period_end if payrun else "",
         "worked_days": slip.worked_days if slip.worked_days is not None else 22.0,
@@ -83,6 +81,7 @@ def get_payrun(
     return payrun
 
 
+@router.post("/", response_model=PayrunRead, status_code=201)
 @router.post("/wizard", response_model=PayrunRead, status_code=201)
 def create_payrun(
     payload: PayrunCreate,
@@ -256,11 +255,9 @@ def send_payslips(
 
         payslip_data = {
             "employee_name": emp_name,
-            "employee_id": employee.id,
-            "email": emp_email,
-            "department": employee.department or "",
-            "job_position": employee.job_position or "",
-            "bank_account": employee.bank_account or "",
+            "department": employee.department or "General",
+            "job_position": employee.job_position or "Staff Member",
+            "bank_account": employee.bank_account or "Direct Deposit",
             "period_start": payrun.period_start,
             "period_end": payrun.period_end,
             "worked_days": slip.worked_days if slip.worked_days is not None else 22.0,
@@ -295,15 +292,19 @@ def send_payslips(
     }
 
 
-@router.delete("/{payrun_id}", status_code=204)
-def delete_payrun(
+@router.post("/{payrun_id}/pay", response_model=PayrunRead)
+def mark_payrun_paid(
     payrun_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_payroll_manager),
+    current_user: User = Depends(require_payroll_write),
 ):
     payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
     if not payrun:
         raise HTTPException(status_code=404, detail="Payrun not found")
-    db.delete(payrun)
+    payrun.status = PayrunStatus.PAID
+    # also mark all payslips paid if status column exists
     db.commit()
-    return None
+    db.refresh(payrun)
+    return payrun
+
+

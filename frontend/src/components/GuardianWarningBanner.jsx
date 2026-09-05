@@ -4,25 +4,25 @@ export default function GuardianWarningBanner({ warnings = [] }) {
   if (!warnings || warnings.length === 0) return null
 
   return (
-    <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 backdrop-blur-md shadow-lg">
-      <div className="flex items-start space-x-3">
-        <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 mt-0.5">
+    <div className="mb-6 p-4 rounded-2xl bg-amber-50/80 shadow-xs border-0">
+      <div className="flex items-start gap-3">
+        <div className="p-2 rounded-xl bg-amber-100/80 text-amber-700 mt-0.5 shrink-0">
           <ShieldAlert className="w-5 h-5" />
         </div>
         <div className="flex-1">
-          <h4 className="text-sm font-bold text-amber-300 flex items-center gap-2">
-            <span>Payroll Guardian Detected {warnings.length} Operational Anomaly{warnings.length > 1 ? 's' : ''}</span>
+          <h4 className="text-sm font-bold text-amber-900 flex items-center gap-2">
+            <span>Payroll Guardian: {warnings.length} Operational Issue{warnings.length > 1 ? 's' : ''} Detected</span>
           </h4>
-          <p className="text-xs text-amber-200/80 mt-1">
-            Please resolve the operational warnings below prior to payrun finalization:
+          <p className="text-xs text-amber-700 mt-0.5">
+            Resolve these operational warnings before final bank disbursement:
           </p>
-          <ul className="mt-2 space-y-1.5 text-xs text-amber-200">
+          <ul className="mt-2.5 space-y-1.5 text-xs text-amber-900">
             {warnings.map((w, idx) => (
-              <li key={idx} className="flex items-center space-x-2 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+              <li key={idx} className="flex items-center gap-2 bg-white/90 px-3 py-2 rounded-xl shadow-2xs border-0">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                 <span>
-                  <strong className="font-semibold text-amber-100">{w.employee_name || `Employee #${w.employee_id}`}:</strong>{' '}
-                  {w.message}
+                  <strong className="font-semibold text-slate-900">{w.employee_name || `Employee #${w.employee_id}`}:</strong>{' '}
+                  <span className="text-slate-600">{w.message}</span>
                 </span>
               </li>
             ))}

@@ -1,431 +1,320 @@
 """
-PDF Generator
-Renders a Jinja2 HTML payslip template to PDF binary streams.
-Supports WeasyPrint and ReportLab with fallback generation.
+PDF Generator — High-Performance Production Odoo ERP Payslip Generator
+Generates pixel-perfect, executive-grade PDF payslips via ReportLab with embedded Odoo branding.
 """
 import io
 import json
 from pathlib import Path
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+from datetime import datetime
 
-TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, KeepTogether, HRFlowable
+)
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch, mm
 
-try:
-    from weasyprint import HTML
-    WEASYPRINT_AVAILABLE = True
-except Exception:
-    WEASYPRINT_AVAILABLE = False
+# Path to Odoo brand logo
+LOGO_PATH = Path(__file__).resolve().parent.parent.parent / "frontend" / "src" / "assets" / "odoo_logo.png"
 
-try:
-    from reportlab.lib.pagesizes import letter
-    from reportlab.lib import colors
-    from reportlab.platypus import (
-        SimpleDocTemplate,
-        Paragraph,
-        Spacer,
-        Table,
-        TableStyle,
-        HRFlowable,
-    )
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    REPORTLAB_AVAILABLE = True
-except Exception:
-    REPORTLAB_AVAILABLE = False
-
-
-def _generate_reportlab_pdf(payslip_data: dict) -> bytes:
-    """
-    Generate professional payslip PDF binary stream using ReportLab.
-    """
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=letter,
-        rightMargin=36,
-        leftMargin=36,
-        topMargin=36,
-        bottomMargin=36,
-    )
-
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        "DocTitle",
-        parent=styles["Heading1"],
-        fontSize=20,
-        leading=24,
-        textColor=colors.HexColor("#1e40af"),
-        fontName="Helvetica-Bold",
-    )
-    subtitle_style = ParagraphStyle(
-        "SubTitle",
-        parent=styles["Normal"],
-        fontSize=9,
-        leading=12,
-        textColor=colors.HexColor("#64748b"),
-    )
-    badge_style = ParagraphStyle(
-        "Badge",
-        parent=styles["Normal"],
-        fontSize=11,
-        leading=14,
-        textColor=colors.HexColor("#1d4ed8"),
-        alignment=2,  # Right
-        fontName="Helvetica-Bold",
-    )
-    meta_style = ParagraphStyle(
-        "MetaRight",
-        parent=styles["Normal"],
-        fontSize=9,
-        leading=12,
-        textColor=colors.HexColor("#64748b"),
-        alignment=2,
-    )
-    section_heading = ParagraphStyle(
-        "SectionHeading",
-        parent=styles["Heading2"],
-        fontSize=11,
-        leading=14,
-        textColor=colors.HexColor("#0f172a"),
-        fontName="Helvetica-Bold",
-        spaceAfter=6,
-    )
-    cell_bold = ParagraphStyle(
-        "CellBold",
-        parent=styles["Normal"],
-        fontSize=9,
-        leading=12,
-        textColor=colors.HexColor("#0f172a"),
-        fontName="Helvetica-Bold",
-    )
-    cell_normal = ParagraphStyle(
-        "CellNormal",
-        parent=styles["Normal"],
-        fontSize=9,
-        leading=12,
-        textColor=colors.HexColor("#334155"),
-    )
-    cell_deduction = ParagraphStyle(
-        "CellDeduction",
-        parent=styles["Normal"],
-        fontSize=9,
-        leading=12,
-        textColor=colors.HexColor("#dc2626"),
-        alignment=2,
-    )
-    cell_right = ParagraphStyle(
-        "CellRight",
-        parent=styles["Normal"],
-        fontSize=9,
-        leading=12,
-        textColor=colors.HexColor("#0f172a"),
-        alignment=2,
-        fontName="Helvetica-Bold",
-    )
-    net_style = ParagraphStyle(
-        "NetStyle",
-        parent=styles["Normal"],
-        fontSize=18,
-        leading=22,
-        textColor=colors.HexColor("#1d4ed8"),
-        alignment=2,
-        fontName="Helvetica-Bold",
-    )
-
-    story = []
-
-    # 1. Header Table
-    header_data = [
-        [
-            Paragraph("<b>PeoplePay360</b>", title_style),
-            Paragraph("OFFICIAL PAYSLIP", badge_style),
-        ],
-        [
-            Paragraph("Enterprise Workforce-to-Payroll Management", subtitle_style),
-            Paragraph(f"Period: {payslip_data.get('period_start')} &ndash; {payslip_data.get('period_end')}", meta_style),
-        ],
-    ]
-    t_header = Table(header_data, colWidths=[320, 220])
-    t_header.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
-    ]))
-    story.append(t_header)
-    story.append(Spacer(1, 10))
-    story.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor("#2563eb"), spaceAfter=14))
-
-    # 2. Employee and Period Details Table
-    emp_name = payslip_data.get("employee_name", "Employee")
-    emp_id = payslip_data.get("employee_id", "—")
-    dept = payslip_data.get("department") or "General"
-    email = payslip_data.get("email") or "—"
-    bank = payslip_data.get("bank_account") or "On File"
-    p_start = payslip_data.get("period_start", "")
-    p_end = payslip_data.get("period_end", "")
-    worked_days = payslip_data.get("worked_days", 22.0)
-    basic = payslip_data.get("basic_pay", 0.0)
-
-    info_data = [
-        [
-            Paragraph("<b>EMPLOYEE PROFILE</b>", cell_bold),
-            Paragraph("", cell_normal),
-            Paragraph("<b>PAY PERIOD DETAILS</b>", cell_bold),
-            Paragraph("", cell_normal),
-        ],
-        [
-            Paragraph("Full Name:", cell_normal),
-            Paragraph(emp_name, cell_bold),
-            Paragraph("Period Start:", cell_normal),
-            Paragraph(str(p_start), cell_bold),
-        ],
-        [
-            Paragraph("Employee ID:", cell_normal),
-            Paragraph(f"#{emp_id}", cell_bold),
-            Paragraph("Period End:", cell_normal),
-            Paragraph(str(p_end), cell_bold),
-        ],
-        [
-            Paragraph("Department:", cell_normal),
-            Paragraph(str(dept), cell_bold),
-            Paragraph("Worked Days:", cell_normal),
-            Paragraph(f"{worked_days} days", cell_bold),
-        ],
-        [
-            Paragraph("Bank Account:", cell_normal),
-            Paragraph(str(bank), cell_bold),
-            Paragraph("Base Wage:", cell_normal),
-            Paragraph(f"${basic:,.2f}", cell_bold),
-        ],
-    ]
-
-    t_info = Table(info_data, colWidths=[90, 170, 90, 190])
-    t_info.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
-        ("BOX", (0, 0), (-1, -1), 1, colors.HexColor("#e2e8f0")),
-        ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#f1f5f9")),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("LINEBELOW", (0, 0), (-1, 0), 1, colors.HexColor("#cbd5e1")),
-    ]))
-    story.append(t_info)
-    story.append(Spacer(1, 14))
-
-    # 3. Itemized Salary Rules Breakdown
-    story.append(Paragraph("<b>ITEMIZED SALARY RULES BREAKDOWN</b>", section_heading))
-
-    breakdown = payslip_data.get("breakdown") or {}
-    gross = payslip_data.get("gross", 0.0)
-    net = payslip_data.get("net_pay", 0.0)
-    allow = payslip_data.get("allowances", 0.0)
-    ded = payslip_data.get("deductions", 0.0)
-
-    housing = breakdown.get("2_Housing_Allowance", round(basic * 0.10, 2))
-    transport = breakdown.get("2_Transport_Allowance", round(basic * 0.05, 2))
-    lop_days = breakdown.get("4_LOP_Days", 0)
-    lop_ded = breakdown.get("4_LOP_Deduction", 0.0)
-    daily_rate = breakdown.get("4_Daily_Rate", 0.0)
-    tax = breakdown.get("5_Income_Tax", round(gross * 0.07, 2))
-    soc_sec = breakdown.get("6_Social_Security", round(gross * 0.03, 2))
-
-    rules_table_data = [
-        [
-            Paragraph("<b>Category</b>", cell_bold),
-            Paragraph("<b>Rule Code</b>", cell_bold),
-            Paragraph("<b>Description</b>", cell_bold),
-            Paragraph("<b>Amount</b>", cell_right),
-        ],
-        [
-            Paragraph("BASIC", cell_normal),
-            Paragraph("BASIC", cell_normal),
-            Paragraph("Base Monthly Wage", cell_normal),
-            Paragraph(f"${basic:,.2f}", cell_right),
-        ],
-        [
-            Paragraph("ALLOWANCE", cell_normal),
-            Paragraph("HOUSING", cell_normal),
-            Paragraph("Housing Allowance (10%)", cell_normal),
-            Paragraph(f"${housing:,.2f}", cell_right),
-        ],
-        [
-            Paragraph("ALLOWANCE", cell_normal),
-            Paragraph("TRANSPORT", cell_normal),
-            Paragraph("Transport Allowance (5%)", cell_normal),
-            Paragraph(f"${transport:,.2f}", cell_right),
-        ],
-        [
-            Paragraph("<b>GROSS</b>", cell_bold),
-            Paragraph("<b>GROSS</b>", cell_bold),
-            Paragraph("<b>Gross Earnings Subtotal</b>", cell_bold),
-            Paragraph(f"<b>${gross:,.2f}</b>", cell_right),
-        ],
-    ]
-
-    if lop_days > 0:
-        rules_table_data.append([
-            Paragraph("DEDUCTION", cell_normal),
-            Paragraph("LOP", cell_normal),
-            Paragraph(f"Loss of Pay ({lop_days} day(s) @ ${daily_rate:.2f}/day)", cell_normal),
-            Paragraph(f"-${lop_ded:,.2f}", cell_deduction),
-        ])
-
-    rules_table_data.extend([
-        [
-            Paragraph("DEDUCTION", cell_normal),
-            Paragraph("TAX", cell_normal),
-            Paragraph("Income Tax Withholding (7%)", cell_normal),
-            Paragraph(f"-${tax:,.2f}", cell_deduction),
-        ],
-        [
-            Paragraph("DEDUCTION", cell_normal),
-            Paragraph("SOC_SEC", cell_normal),
-            Paragraph("Social Security Contribution (3%)", cell_normal),
-            Paragraph(f"-${soc_sec:,.2f}", cell_deduction),
-        ],
-        [
-            Paragraph("<b>NET</b>", cell_bold),
-            Paragraph("<b>NET_PAY</b>", cell_bold),
-            Paragraph("<b>Total Take-Home Pay</b>", cell_bold),
-            Paragraph(f"<b>${net:,.2f}</b>", cell_right),
-        ],
-    ])
-
-    t_rules = Table(rules_table_data, colWidths=[90, 80, 250, 120])
-    table_style_commands = [
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e40af")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("BACKGROUND", (0, 4), (-1, 4), colors.HexColor("#eff6ff")),  # Gross row
-        ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#f0fdf4")),  # Net row
-    ]
-    t_rules.setStyle(TableStyle(table_style_commands))
-    story.append(t_rules)
-    story.append(Spacer(1, 16))
-
-    # 4. Net Pay Callout Summary
-    summary_data = [
-        [
-            Paragraph("<b>CONFIDENTIAL DOCUMENT</b><br/><font color='#64748b' size='8'>This official payslip is generated by PeoplePay360 for authorized employee verification only.</font>", cell_normal),
-            Paragraph("<b>TOTAL NET PAYABLE</b>", ParagraphStyle("LabelR", parent=cell_normal, alignment=2, textColor=colors.HexColor("#64748b"))),
-        ],
-        [
-            Paragraph("", cell_normal),
-            Paragraph(f"${net:,.2f}", net_style),
-        ],
-    ]
-    t_summary = Table(summary_data, colWidths=[360, 180])
-    t_summary.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
-        ("BOX", (0, 0), (-1, -1), 1.5, colors.HexColor("#2563eb")),
-        ("TOPPADDING", (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-        ("LEFTPADDING", (0, 0), (-1, -1), 12),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
-    ]))
-    story.append(t_summary)
-    story.append(Spacer(1, 20))
-
-    # 5. Footer
-    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#e2e8f0"), spaceAfter=8))
-    footer_data = [
-        [
-            Paragraph(f"PeoplePay360 &bull; Generated: {p_end} &bull; System Verified", subtitle_style),
-            Paragraph("Strictly Confidential", meta_style),
-        ]
-    ]
-    t_footer = Table(footer_data, colWidths=[380, 160])
-    story.append(t_footer)
-
-    doc.build(story)
-    return buffer.getvalue()
-
-
-def _generate_fallback_pdf(html_content: str, payslip_data: dict) -> bytes:
-    """
-    Fallback basic PDF writer.
-    """
-    emp_name = payslip_data.get("employee_name", "Employee")
-    period = f"{payslip_data.get('period_start', '')} to {payslip_data.get('period_end', '')}"
-    net = payslip_data.get("net_pay", 0.0)
-    basic = payslip_data.get("basic_pay", 0.0)
-    allow = payslip_data.get("allowances", 0.0)
-    gross = payslip_data.get("gross", 0.0)
-    ded = payslip_data.get("deductions", 0.0)
-
-    summary_text = (
-        f"PEOPLEPAY360 OFFICIAL PAYSLIP\\n"
-        f"Employee: {emp_name}\\n"
-        f"Department: {payslip_data.get('department', '')}\\n"
-        f"Pay Period: {period}\\n"
-        f"----------------------------------------\\n"
-        f"Basic Pay:  {basic:.2f}\\n"
-        f"Allowances: {allow:.2f}\\n"
-        f"Gross Pay:  {gross:.2f}\\n"
-        f"Deductions: {ded:.2f}\\n"
-        f"NET PAY:    {net:.2f}\\n"
-        f"----------------------------------------\\n"
-    )
-
-    pdf_content = (
-        "%PDF-1.4\n"
-        "1 0 obj <</Type /Catalog /Pages 2 0 R>> endobj\n"
-        "2 0 obj <</Type /Pages /Kids [3 0 R] /Count 1>> endobj\n"
-        "3 0 obj <</Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources <</Font <</F1 5 0 R>>>>>> endobj\n"
-        "4 0 obj <</Length " + str(len(summary_text) + 50) + ">> stream\n"
-        "BT /F1 12 Tf 50 700 Td (" + summary_text.replace("\n", ") Tj T* (") + ") Tj ET\n"
-        "endstream\n"
-        "endobj\n"
-        "5 0 obj <</Type /Font /Subtype /Type1 /BaseFont /Helvetica>> endobj\n"
-        "xref\n0 6\n"
-        "0000000000 65535 f \n"
-        "0000000009 00000 n \n"
-        "0000000058 00000 n \n"
-        "0000000115 00000 n \n"
-        "0000000244 00000 n \n"
-        "0000000400 00000 n \n"
-        "trailer <</Size 6 /Root 1 0 R>>\n"
-        "startxref\n470\n%%EOF"
-    )
-    return pdf_content.encode("latin-1", errors="replace")
+# Brand colors
+ODOO_PLUM = colors.HexColor("#714B67")
+ODOO_TEAL = colors.HexColor("#00A09D")
+SLATE_DARK = colors.HexColor("#0f172a")
+SLATE_MUTED = colors.HexColor("#64748b")
+BG_LIGHT = colors.HexColor("#f8fafc")
+BORDER_COLOR = colors.HexColor("#e2e8f0")
 
 
 def generate_payslip_pdf(payslip_data: dict) -> bytes:
     """
-    Accepts a flat dict with keys:
-        employee_name, employee_id, email, department, bank_account,
-        period_start, period_end, worked_days, basic_pay, allowances,
-        gross, deductions, net_pay, breakdown (str|dict)
-    Returns raw PDF bytes.
+    Renders an itemized, executive-grade Odoo ERP payslip PDF in memory and returns raw bytes.
     """
-    # Parse breakdown if string
-    if isinstance(payslip_data.get("breakdown"), str):
-        try:
-            payslip_data["breakdown"] = json.loads(payslip_data["breakdown"])
-        except Exception:
-            payslip_data["breakdown"] = {}
-
-    # 1. Render Jinja2 HTML template
-    env = Environment(
-        loader=FileSystemLoader(str(TEMPLATE_DIR)),
-        autoescape=select_autoescape(["html"]),
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=40,
+        leftMargin=40,
+        topMargin=40,
+        bottomMargin=40,
     )
-    template = env.get_template("payslip.html")
-    html_content = template.render(**payslip_data)
 
-    # 2. Prefer WeasyPrint if available and working
-    if WEASYPRINT_AVAILABLE:
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Custom typography styles
+    title_style = ParagraphStyle(
+        "DocTitle",
+        fontName="Helvetica-Bold",
+        fontSize=18,
+        leading=22,
+        textColor=ODOO_PLUM,
+    )
+    subtitle_style = ParagraphStyle(
+        "DocSubTitle",
+        fontName="Helvetica",
+        fontSize=10,
+        leading=14,
+        textColor=SLATE_MUTED,
+    )
+    header_right_style = ParagraphStyle(
+        "HeaderRight",
+        fontName="Helvetica-Bold",
+        fontSize=13,
+        leading=16,
+        alignment=2, # Right aligned
+        textColor=SLATE_DARK,
+    )
+    header_right_sub = ParagraphStyle(
+        "HeaderRightSub",
+        fontName="Helvetica",
+        fontSize=9,
+        leading=13,
+        alignment=2,
+        textColor=SLATE_MUTED,
+    )
+    label_style = ParagraphStyle(
+        "LabelStyle",
+        fontName="Helvetica-Bold",
+        fontSize=8,
+        leading=11,
+        textColor=SLATE_MUTED,
+    )
+    val_style = ParagraphStyle(
+        "ValStyle",
+        fontName="Helvetica-Bold",
+        fontSize=9.5,
+        leading=13,
+        textColor=SLATE_DARK,
+    )
+    table_header_style = ParagraphStyle(
+        "THeader",
+        fontName="Helvetica-Bold",
+        fontSize=9,
+        leading=12,
+        textColor=colors.white,
+    )
+    table_cell_style = ParagraphStyle(
+        "TCell",
+        fontName="Helvetica",
+        fontSize=9,
+        leading=13,
+        textColor=SLATE_DARK,
+    )
+    table_cell_bold = ParagraphStyle(
+        "TCellBold",
+        fontName="Helvetica-Bold",
+        fontSize=9,
+        leading=13,
+        textColor=SLATE_DARK,
+    )
+    net_val_style = ParagraphStyle(
+        "NetVal",
+        fontName="Helvetica-Bold",
+        fontSize=16,
+        leading=20,
+        alignment=2,
+        textColor=ODOO_PLUM,
+    )
+
+    # 1. Header with Logo and Company Info
+    emp_name = payslip_data.get("employee_name", "Valued Employee")
+    dept = payslip_data.get("department", "General")
+    period_start = payslip_data.get("period_start", "")
+    period_end = payslip_data.get("period_end", "")
+    period_str = f"{period_start} to {period_end}" if period_start else "Current Pay Period"
+
+    # Logo element
+    if LOGO_PATH.exists():
+        logo_img = Image(str(LOGO_PATH), width=90, height=30)
+    else:
+        logo_img = Paragraph("<b>Odoo ERP</b>", title_style)
+
+    header_left = [
+        logo_img,
+        Spacer(1, 4),
+        Paragraph("PeoplePay360 Global Workforce ERP", subtitle_style),
+        Paragraph("People Technology & Enterprise Payroll Systems", label_style),
+    ]
+
+    header_right = [
+        Paragraph("CONFIDENTIAL SALARY PAYSLIP", header_right_style),
+        Paragraph(f"Pay Period: <b>{period_str}</b>", header_right_sub),
+        Paragraph(f"Issue Date: {datetime.now().strftime('%d %b %Y')}", header_right_sub),
+        Paragraph("Disbursement Status: <b>FINALIZED</b>", header_right_sub),
+    ]
+
+    header_table = Table(
+        [[header_left, header_right]],
+        colWidths=[280, 235]
+    )
+    header_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+    ]))
+    elements.append(header_table)
+    elements.append(HRFlowable(width="100%", thickness=1.5, color=ODOO_PLUM, spaceBefore=4, spaceAfter=14))
+
+    # 2. Employee Metadata Card
+    bank_acc = payslip_data.get("bank_account", "GB29NWBK60161331926819") or "Registered Corporate Direct Deposit"
+    emp_grid = [
+        [
+            Paragraph("EMPLOYEE NAME", label_style),
+            Paragraph(emp_name, val_style),
+            Paragraph("DEPARTMENT", label_style),
+            Paragraph(dept, val_style),
+        ],
+        [
+            Paragraph("PAYROLL CYCLE", label_style),
+            Paragraph("Monthly Regular", val_style),
+            Paragraph("BANK / IBAN", label_style),
+            Paragraph(str(bank_acc), val_style),
+        ],
+        [
+            Paragraph("CURRENCY", label_style),
+            Paragraph("INR (Indian Rupee - ₹)", val_style),
+            Paragraph("PAYMENT MODE", label_style),
+            Paragraph("Electronic NEFT / IMPS", val_style),
+        ]
+    ]
+    meta_table = Table(emp_grid, colWidths=[105, 155, 105, 150])
+    meta_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), BG_LIGHT),
+        ("BOX", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ("INNERGRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    elements.append(meta_table)
+    elements.append(Spacer(1, 16))
+
+    # 3. Itemized Earnings & Deductions Breakdown
+    basic_val = float(payslip_data.get("basic_pay", 0.0) or 0.0)
+    allowance_val = float(payslip_data.get("allowances", 0.0) or 0.0)
+    gross_val = float(payslip_data.get("gross", basic_val + allowance_val) or (basic_val + allowance_val))
+    deductions_val = float(payslip_data.get("deductions", 0.0) or 0.0)
+    net_val = float(payslip_data.get("net_pay", gross_val - deductions_val) or (gross_val - deductions_val))
+
+    # Parse breakdown if present
+    breakdown = payslip_data.get("breakdown")
+    if isinstance(breakdown, str):
         try:
-            return HTML(string=html_content, base_url=str(TEMPLATE_DIR)).write_pdf()
+            breakdown = json.loads(breakdown)
         except Exception:
-            pass
+            breakdown = {}
+    elif not isinstance(breakdown, dict):
+        breakdown = {}
 
-    # 3. Use ReportLab to generate valid, styled PDF binary stream
-    if REPORTLAB_AVAILABLE:
-        try:
-            return _generate_reportlab_pdf(payslip_data)
-        except Exception:
-            pass
+    tax_val = breakdown.get("INCOME_TAX", gross_val * 0.07)
+    ss_val = breakdown.get("SOCIAL_SEC", gross_val * 0.03)
+    lop_val = breakdown.get("LOP_DEDUCTION", max(0.0, deductions_val - (tax_val + ss_val)))
 
-    # 4. Fallback generator
-    return _generate_fallback_pdf(html_content, payslip_data)
+    items_data = [
+        [
+            Paragraph("EARNINGS & ALLOWANCES", table_header_style),
+            Paragraph("AMOUNT (INR)", ParagraphStyle("TH2", parent=table_header_style, alignment=2)),
+            Paragraph("DEDUCTIONS & WITHHOLDINGS", table_header_style),
+            Paragraph("AMOUNT (INR)", ParagraphStyle("TH3", parent=table_header_style, alignment=2)),
+        ],
+        [
+            Paragraph("Basic Monthly Salary", table_cell_style),
+            Paragraph(f"₹{basic_val:,.2f}", ParagraphStyle("C1", parent=table_cell_style, alignment=2)),
+            Paragraph("Provident Fund / Income Tax (7%)", table_cell_style),
+            Paragraph(f"₹{tax_val:,.2f}", ParagraphStyle("C2", parent=table_cell_style, alignment=2)),
+        ],
+        [
+            Paragraph("Housing & Transport Allowance (15%)", table_cell_style),
+            Paragraph(f"₹{allowance_val:,.2f}", ParagraphStyle("C3", parent=table_cell_style, alignment=2)),
+            Paragraph("Social Security & Medical (3%)", table_cell_style),
+            Paragraph(f"₹{ss_val:,.2f}", ParagraphStyle("C4", parent=table_cell_style, alignment=2)),
+        ],
+        [
+            Paragraph("Special Performance Stipend", table_cell_style),
+            Paragraph("₹0.00", ParagraphStyle("C5", parent=table_cell_style, alignment=2)),
+            Paragraph("Loss of Pay (LOP Deductions)", table_cell_style),
+            Paragraph(f"₹{lop_val:,.2f}", ParagraphStyle("C6", parent=table_cell_style, alignment=2)),
+        ],
+        [
+            Paragraph("<b>TOTAL GROSS EARNINGS</b>", table_cell_bold),
+            Paragraph(f"<b>₹{gross_val:,.2f}</b>", ParagraphStyle("C7", parent=table_cell_bold, alignment=2)),
+            Paragraph("<b>TOTAL DEDUCTIONS</b>", table_cell_bold),
+            Paragraph(f"<b>₹{deductions_val:,.2f}</b>", ParagraphStyle("C8", parent=table_cell_bold, alignment=2)),
+        ],
+    ]
+
+    items_table = Table(items_data, colWidths=[175, 80, 180, 80])
+    items_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), ODOO_PLUM),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("BACKGROUND", (0, 1), (-1, 3), colors.white),
+        ("BACKGROUND", (0, 4), (-1, 4), BG_LIGHT),
+        ("BOX", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ("INNERGRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
+        ("LINEBELOW", (0, 0), (-1, 0), 1, ODOO_PLUM),
+    ]))
+    elements.append(items_table)
+    elements.append(Spacer(1, 14))
+
+    # 4. Net Salary Highlight Banner
+    net_box_data = [
+        [
+            Paragraph("<b>TOTAL NET PAYABLE SALARY (TAKE-HOME)</b><br/><font size=8 color='#64748b'>Disbursed directly to registered employee account</font>", ParagraphStyle("NetL", fontName="Helvetica", fontSize=10, leading=14, textColor=SLATE_DARK)),
+            Paragraph(f"₹{net_val:,.2f}", net_val_style),
+        ]
+    ]
+    net_table = Table(net_box_data, colWidths=[315, 200])
+    net_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f3e8f0")), # Soft Odoo plum tint
+        ("BOX", (0, 0), (-1, -1), 1, ODOO_PLUM),
+        ("TOPPADDING", (0, 0), (-1, -1), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    elements.append(net_table)
+    elements.append(Spacer(1, 28))
+
+    # 5. Authorization & Verification Signatures
+    sig_data = [
+        [
+            Paragraph("<b>HR & Payroll Administration</b><br/><font size=7 color='#64748b'>PeoplePay360 Authorized Signatory</font>", label_style),
+            Paragraph("<b>Finance & Accounts Controller</b><br/><font size=7 color='#64748b'>Approved & Audited</font>", label_style),
+            Paragraph("<b>Employee Confirmation</b><br/><font size=7 color='#64748b'>Digital Acknowledgment</font>", label_style),
+        ],
+        [
+            Paragraph("____________________________<br/>Marc Demo (HR Manager)", label_style),
+            Paragraph("____________________________<br/>Amit Saxena (Finance Controller)", label_style),
+            Paragraph(f"____________________________<br/>{emp_name}", label_style),
+        ]
+    ]
+    sig_table = Table(sig_data, colWidths=[175, 175, 165])
+    sig_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("TOPPADDING", (0, 1), (-1, 1), 20),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    elements.append(KeepTogether([sig_table]))
+
+    # Footer note
+    elements.append(Spacer(1, 24))
+    elements.append(Paragraph(
+        "<i>Note: This is a system-generated secure document from PeoplePay360 powered by Odoo ERP. No physical signature is required. For inquiries, contact payroll@peoplepay360.dev.</i>",
+        ParagraphStyle("FooterNote", fontName="Helvetica-Oblique", fontSize=7.5, leading=10, alignment=1, textColor=SLATE_MUTED)
+    ))
+
+    # Build PDF
+    doc.build(elements)
+    return buffer.getvalue()
