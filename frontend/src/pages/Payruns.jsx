@@ -63,12 +63,12 @@ export default function Payruns() {
   return (
     <div className="space-y-4">
       {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900">Payroll Runs</h1>
           <p className="text-xs text-slate-500">Calculate employee salary sheets, biometric deductions, and payouts.</p>
         </div>
-        <Button onClick={() => setIsWizardOpen(true)} className="gap-1.5 font-medium">
+        <Button onClick={() => setIsWizardOpen(true)} className="gap-1.5 font-medium shadow-xs">
           <Plus className="h-3.5 w-3.5" /> Generate Payrun
         </Button>
       </div>
@@ -81,7 +81,7 @@ export default function Payruns() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search payrun batch..."
-            className="pl-8 h-8 text-xs bg-white"
+            className="pl-8 h-8 text-xs bg-white shadow-xs"
           />
         </div>
       </div>
@@ -161,7 +161,7 @@ export default function Payruns() {
                   value={payrunName}
                   onChange={(e) => setPayrunName(e.target.value)}
                   placeholder="e.g. September 2026 Regular Cycle"
-                  className="h-8 text-xs"
+                  className="h-8 text-xs bg-slate-50"
                 />
               </div>
 
@@ -172,7 +172,7 @@ export default function Payruns() {
                     type="date"
                     value={periodStart}
                     onChange={(e) => setPeriodStart(e.target.value)}
-                    className="h-8 text-xs"
+                    className="h-8 text-xs bg-slate-50"
                   />
                 </div>
                 <div className="space-y-1">
@@ -181,7 +181,7 @@ export default function Payruns() {
                     type="date"
                     value={periodEnd}
                     onChange={(e) => setPeriodEnd(e.target.value)}
-                    className="h-8 text-xs"
+                    className="h-8 text-xs bg-slate-50"
                   />
                 </div>
               </div>
@@ -191,7 +191,7 @@ export default function Payruns() {
                 <select
                   value={selectedDept}
                   onChange={(e) => setSelectedDept(e.target.value)}
-                  className="flex h-8 w-full rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-900 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#714b67]"
+                  className="flex h-8 w-full rounded-lg border-0 bg-slate-100/90 px-2.5 py-1 text-xs text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#714b67]/25"
                 >
                   <option value="All">All Departments (92 Employees)</option>
                   <option value="Engineering">Engineering (34 Employees)</option>
@@ -201,7 +201,7 @@ export default function Payruns() {
             </div>
           ) : (
             <div className="space-y-2.5 py-2 text-xs">
-              <div className="p-3 rounded bg-slate-50 border border-slate-200 space-y-1.5">
+              <div className="p-3 rounded-xl bg-slate-50 space-y-1.5">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Batch:</span>
                   <span className="font-medium text-slate-900">{payrunName}</span>
@@ -216,7 +216,7 @@ export default function Payruns() {
                 </div>
               </div>
 
-              <div className="p-2.5 rounded bg-emerald-50 border border-emerald-200 flex items-center gap-2">
+              <div className="p-2.5 rounded-xl bg-emerald-50 flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                 <span className="text-[11px] text-emerald-800">
                   Biometrics, unapproved PTOs, and statutory ceilings verified.

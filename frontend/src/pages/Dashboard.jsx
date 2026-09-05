@@ -7,7 +7,7 @@ import {
 } from 'recharts'
 import {
   DollarSign, Users, TrendingUp, AlertTriangle, ArrowUpRight,
-  Sparkles, Calendar, CheckCircle2, ChevronRight, FileSpreadsheet
+  Sparkles, Calendar, CheckCircle2, ChevronRight, ShieldCheck
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -76,19 +76,19 @@ export default function Dashboard() {
       iconBg: 'bg-blue-50 text-blue-700',
     },
     {
-      title: 'Pending Exceptions',
-      value: '3 Actions',
-      trend: 'Requires sign-off before payout',
-      icon: AlertTriangle,
-      iconBg: 'bg-amber-50 text-amber-700',
-      badge: 'Attention',
+      title: 'Compliance Readiness',
+      value: '98.5%',
+      trend: '3 items to review',
+      icon: ShieldCheck,
+      iconBg: 'bg-emerald-50 text-emerald-700',
+      badge: 'Ready',
     },
   ]
 
   return (
     <div className="space-y-5">
-      {/* Top Action Bar (Odoo Style) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-200/80">
+      {/* Top Action Bar (0 Outlines) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900">
             Payroll Dashboard
@@ -98,12 +98,12 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="hidden sm:inline-flex gap-1.5 py-1 px-2.5 bg-white text-slate-600">
+          <Badge variant="outline" className="hidden sm:inline-flex gap-1.5 py-1 px-3 bg-white text-slate-600 shadow-xs">
             <Calendar className="h-3.5 w-3.5 text-[#714b67]" />
             <span>Cycle: September 2026</span>
           </Badge>
           <Link to="/payruns">
-            <Button className="gap-1.5 font-medium">
+            <Button className="gap-1.5 font-medium shadow-xs">
               <Sparkles className="h-3.5 w-3.5" />
               New Payrun Batch
             </Button>
@@ -111,18 +111,18 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards (0 Outlines, smooth shadow) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {kpis.map((kpi) => {
           const Icon = kpi.icon
           return (
-            <Card key={kpi.title} className="hover:border-slate-300 transition-colors">
+            <Card key={kpi.title} className="hover:shadow-md transition-all">
               <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                     {kpi.title}
                   </span>
-                  <div className={`p-1.5 rounded ${kpi.iconBg}`}>
+                  <div className={`p-2 rounded-xl ${kpi.iconBg}`}>
                     <Icon className="h-4 w-4" />
                   </div>
                 </div>
@@ -133,7 +133,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between mt-1 text-xs text-slate-500">
                     <span>{kpi.trend}</span>
                     {kpi.badge && (
-                      <Badge variant="warning" className="text-[10px] px-1.5 py-0">
+                      <Badge variant="success" className="text-[10px] px-2 py-0.5">
                         {kpi.badge}
                       </Badge>
                     )}
@@ -161,11 +161,11 @@ export default function Dashboard() {
               </div>
               <div className="flex items-center gap-3 text-xs">
                 <div className="flex items-center gap-1.5">
-                  <div className="h-2.5 w-2.5 rounded-sm bg-[#714b67]" />
+                  <div className="h-2.5 w-2.5 rounded-full bg-[#714b67]" />
                   <span className="text-slate-600 text-[11px]">Gross</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="h-2.5 w-2.5 rounded-sm bg-[#00a09d]" />
+                  <div className="h-2.5 w-2.5 rounded-full bg-[#00a09d]" />
                   <span className="text-slate-600 text-[11px]">Net</span>
                 </div>
               </div>
@@ -174,13 +174,13 @@ export default function Dashboard() {
           <CardContent className="h-[250px] w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={fallbackDeptData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="2 2" stroke="#f1f5f9" vertical={false} />
+                <CartesianGrid strokeDasharray="2 2" stroke="#f8fafc" vertical={false} />
                 <XAxis
                   dataKey="department"
                   stroke="#94a3b8"
                   fontSize={11}
                   tickLine={false}
-                  axisLine={{ stroke: '#e2e8f0' }}
+                  axisLine={false}
                 />
                 <YAxis
                   stroke="#94a3b8"
@@ -192,15 +192,15 @@ export default function Dashboard() {
                 <Tooltip
                   contentStyle={{
                     backgroundColor: '#ffffff',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '6px',
+                    border: 'none',
+                    borderRadius: '8px',
                     fontSize: '11px',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
                   }}
                   formatter={(val) => [formatCurrency(val), '']}
                 />
-                <Bar dataKey="gross" fill="#714b67" radius={[3, 3, 0, 0]} maxBarSize={32} />
-                <Bar dataKey="net" fill="#00a09d" radius={[3, 3, 0, 0]} maxBarSize={32} />
+                <Bar dataKey="gross" fill="#714b67" radius={[6, 6, 0, 0]} maxBarSize={28} />
+                <Bar dataKey="net" fill="#00a09d" radius={[6, 6, 0, 0]} maxBarSize={28} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -221,17 +221,17 @@ export default function Dashboard() {
               <AreaChart data={fallbackTrendData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="odooGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#714b67" stopOpacity={0.2} />
+                    <stop offset="5%" stopColor="#714b67" stopOpacity={0.15} />
                     <stop offset="95%" stopColor="#714b67" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="2 2" stroke="#f1f5f9" vertical={false} />
+                <CartesianGrid strokeDasharray="2 2" stroke="#f8fafc" vertical={false} />
                 <XAxis
                   dataKey="month"
                   stroke="#94a3b8"
                   fontSize={11}
                   tickLine={false}
-                  axisLine={{ stroke: '#e2e8f0' }}
+                  axisLine={false}
                 />
                 <YAxis
                   stroke="#94a3b8"
@@ -243,10 +243,10 @@ export default function Dashboard() {
                 <Tooltip
                   contentStyle={{
                     backgroundColor: '#ffffff',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '6px',
+                    border: 'none',
+                    borderRadius: '8px',
                     fontSize: '11px',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
                   }}
                   formatter={(val) => [formatCurrency(val), 'Payroll Total']}
                 />
@@ -254,7 +254,7 @@ export default function Dashboard() {
                   type="monotone"
                   dataKey="total"
                   stroke="#714b67"
-                  strokeWidth={2}
+                  strokeWidth={2.5}
                   fillOpacity={1}
                   fill="url(#odooGradient)"
                 />
@@ -268,7 +268,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Department Overview Table */}
         <Card className="lg:col-span-2 p-0 overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="p-4 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-slate-900">Department Summary</h3>
               <p className="text-xs text-slate-500">Staff distribution and budget allocation</p>
@@ -291,7 +291,7 @@ export default function Dashboard() {
             <TableBody>
               {fallbackDeptData.map((d) => (
                 <TableRow key={d.department}>
-                  <TableCell className="font-medium text-slate-900">
+                  <TableCell className="font-semibold text-slate-900">
                     {d.department}
                   </TableCell>
                   <TableCell className="text-center text-slate-600">
@@ -312,7 +312,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Pre-payrun Checklist */}
-        <Card className="p-4 space-y-3">
+        <Card className="p-5 space-y-3">
           <div>
             <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
               <AlertTriangle className="h-4 w-4 text-amber-600" />
@@ -321,18 +321,18 @@ export default function Dashboard() {
             <p className="text-xs text-slate-500 mt-0.5">Tasks required before executing batch</p>
           </div>
 
-          <div className="space-y-2 text-xs">
-            <div className="p-2.5 rounded bg-amber-50/70 border border-amber-200/80 space-y-1">
+          <div className="space-y-2.5 text-xs">
+            <div className="p-3 rounded-xl bg-amber-50/80 space-y-1">
               <div className="font-semibold text-amber-900">2 Pending Time-off Requests</div>
               <p className="text-[11px] text-amber-800/80">
                 Awaiting approval in Engineering and Operations.
               </p>
-              <Link to="/timeoff" className="inline-block pt-0.5 text-xs text-[#714b67] font-semibold hover:underline">
+              <Link to="/time-off" className="inline-block pt-0.5 text-xs text-[#714b67] font-semibold hover:underline">
                 Approve Requests →
               </Link>
             </div>
 
-            <div className="p-2.5 rounded bg-blue-50/70 border border-blue-200/80 space-y-1">
+            <div className="p-3 rounded-xl bg-blue-50/80 space-y-1">
               <div className="font-semibold text-blue-900">1 Contract Due for Revision</div>
               <p className="text-[11px] text-blue-800/80">
                 Fixed-term engineer contract expires this cycle.
@@ -342,15 +342,15 @@ export default function Dashboard() {
               </Link>
             </div>
 
-            <div className="p-2.5 rounded bg-slate-50 border border-slate-200 flex items-center justify-between">
+            <div className="p-3 rounded-xl bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                 <div>
                   <div className="font-medium text-slate-800">Biometrics Synced</div>
-                  <span className="text-[10px] text-slate-500">Device Terminal 01</span>
+                  <span className="text-[10px] text-slate-400">Device Terminal 01</span>
                 </div>
               </div>
-              <Badge variant="outline" className="text-[10px]">Active</Badge>
+              <Badge variant="success" className="text-[10px]">Active</Badge>
             </div>
           </div>
         </Card>

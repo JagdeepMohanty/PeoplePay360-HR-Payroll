@@ -47,12 +47,12 @@ export default function TimeOff() {
   return (
     <div className="space-y-4">
       {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900">Time Off Management</h1>
           <p className="text-xs text-slate-500">Employee leave requests, approvals, and allocation balances.</p>
         </div>
-        <Button className="gap-1.5 font-medium">
+        <Button className="gap-1.5 font-medium shadow-xs">
           <Plus className="h-3.5 w-3.5" /> New Leave Request
         </Button>
       </div>
@@ -61,11 +61,11 @@ export default function TimeOff() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {mockBalances.map((b) => (
           <Card key={b.type}>
-            <CardContent className="p-3.5">
+            <CardContent className="p-4">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
                 {b.type}
               </span>
-              <div className="flex items-baseline justify-between mt-1">
+              <div className="flex items-baseline justify-between mt-1.5">
                 <span className="text-xl font-bold tabular-nums text-slate-900">
                   {b.remaining}{' '}
                   <span className="text-xs font-normal text-slate-500">days left</span>
@@ -74,7 +74,7 @@ export default function TimeOff() {
                   {b.used}/{b.allocated} used
                 </span>
               </div>
-              <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
+              <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2.5 overflow-hidden">
                 <div
                   className="bg-[#714b67] h-full rounded-full"
                   style={{ width: `${(b.used / b.allocated) * 100}%` }}
@@ -88,9 +88,9 @@ export default function TimeOff() {
       {/* Requests Tabs */}
       <Tabs defaultValue="requests" className="space-y-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <TabsList className="bg-slate-100 p-0.5 border border-slate-200">
-            <TabsTrigger value="requests" className="text-xs">Leave Requests</TabsTrigger>
-            <TabsTrigger value="policy" className="text-xs">Leave Policy</TabsTrigger>
+          <TabsList className="bg-slate-100 p-0.5 rounded-full border-0">
+            <TabsTrigger value="requests" className="text-xs rounded-full px-4">Leave Requests</TabsTrigger>
+            <TabsTrigger value="policy" className="text-xs rounded-full px-4">Leave Policy</TabsTrigger>
           </TabsList>
 
           <div className="relative w-full sm:w-64">
@@ -99,7 +99,7 @@ export default function TimeOff() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search requests..."
-              className="pl-8 h-8 text-xs bg-white"
+              className="pl-8 h-8 text-xs bg-white shadow-xs"
             />
           </div>
         </div>
@@ -121,9 +121,9 @@ export default function TimeOff() {
               <TableBody>
                 {filteredRequests.map((req) => (
                   <TableRow key={req.id}>
-                    <TableCell className="font-medium text-slate-900">
+                    <TableCell className="font-semibold text-slate-900">
                       <div>{req.employee}</div>
-                      <span className="text-[10px] text-slate-500">{req.department}</span>
+                      <span className="text-[10px] text-slate-400 font-normal">{req.department}</span>
                     </TableCell>
                     <TableCell className="text-xs text-slate-600">{req.leave_type}</TableCell>
                     <TableCell className="text-xs font-mono text-slate-600">
@@ -155,7 +155,7 @@ export default function TimeOff() {
                             size="sm"
                             variant="teal"
                             onClick={() => handleAction(req.id, 'Approved')}
-                            className="h-6 px-2 text-[11px]"
+                            className="h-6 px-2.5 text-[11px] rounded-full"
                           >
                             Approve
                           </Button>
@@ -163,7 +163,7 @@ export default function TimeOff() {
                             size="sm"
                             variant="destructive"
                             onClick={() => handleAction(req.id, 'Refused')}
-                            className="h-6 px-2 text-[11px]"
+                            className="h-6 px-2.5 text-[11px] rounded-full"
                           >
                             Refuse
                           </Button>
@@ -185,16 +185,16 @@ export default function TimeOff() {
               Company Leave Policy
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-600">
-              <div className="p-3 rounded bg-slate-50 border border-slate-100">
-                <span className="font-semibold text-slate-800 block mb-1">Carry Forward</span>
+              <div className="p-3.5 rounded-xl bg-slate-50">
+                <span className="font-semibold text-slate-900 block mb-1">Carry Forward</span>
                 Up to 15 days of PTO can be carried over into the next fiscal year.
               </div>
-              <div className="p-3 rounded bg-slate-50 border border-slate-100">
-                <span className="font-semibold text-slate-800 block mb-1">Notice Required</span>
+              <div className="p-3.5 rounded-xl bg-slate-50">
+                <span className="font-semibold text-slate-900 block mb-1">Notice Required</span>
                 Leaves longer than 3 days require 7-day prior supervisor intimation.
               </div>
-              <div className="p-3 rounded bg-slate-50 border border-slate-100">
-                <span className="font-semibold text-slate-800 block mb-1">Sick Leave Docs</span>
+              <div className="p-3.5 rounded-xl bg-slate-50">
+                <span className="font-semibold text-slate-900 block mb-1">Sick Leave Docs</span>
                 Medical certificate must be submitted for leaves exceeding 2 days.
               </div>
             </div>

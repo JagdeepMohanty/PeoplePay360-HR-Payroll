@@ -56,12 +56,12 @@ export default function Contracts() {
   return (
     <div className="space-y-4">
       {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900">Contracts</h1>
           <p className="text-xs text-slate-500">Employment terms, wage components, and validity periods.</p>
         </div>
-        <Button className="gap-1.5 font-medium">
+        <Button className="gap-1.5 font-medium shadow-xs">
           <Plus className="h-3.5 w-3.5" /> New Contract
         </Button>
       </div>
@@ -74,19 +74,19 @@ export default function Contracts() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by ref or employee..."
-            className="pl-8 h-8 text-xs bg-white"
+            className="pl-8 h-8 text-xs bg-white shadow-xs"
           />
         </div>
 
-        <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto">
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
           {['All', 'Active', 'Expired'].map((st) => (
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
-              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
                 statusFilter === st
                   ? 'bg-[#714b67] text-white shadow-xs'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 shadow-xs'
               }`}
             >
               {st}
@@ -115,9 +115,9 @@ export default function Contracts() {
                 <TableCell className="font-mono text-xs text-[#714b67] font-semibold">
                   {c.contract_ref}
                 </TableCell>
-                <TableCell className="font-medium text-slate-900">
+                <TableCell className="font-semibold text-slate-900">
                   <div>{c.employee}</div>
-                  <span className="text-[11px] text-slate-500">{c.job_position} · {c.department}</span>
+                  <span className="text-[10px] text-slate-400 font-normal">{c.job_position} · {c.department}</span>
                 </TableCell>
                 <TableCell className="text-xs text-slate-600">{c.structure}</TableCell>
                 <TableCell className="text-xs font-mono text-slate-600">{c.start_date}</TableCell>

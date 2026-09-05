@@ -61,10 +61,10 @@ export default function Employees() {
 
   return (
     <div className="space-y-4">
-      {/* Top Action & Control Bar (Odoo Standard) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
+      {/* Top Action & Control Bar (0 Outlines) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div className="flex items-center gap-2.5">
-          <Button className="gap-1.5 font-medium">
+          <Button className="gap-1.5 font-medium shadow-xs">
             <Plus className="h-3.5 w-3.5" />
             New Employee
           </Button>
@@ -81,25 +81,25 @@ export default function Employees() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Filter by name, role, email..."
-              className="pl-8 h-8 text-xs bg-white"
+              className="pl-8 h-8 text-xs bg-white shadow-xs"
             />
           </div>
 
-          <div className="flex items-center bg-white p-0.5 rounded border border-slate-200 shrink-0">
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg shrink-0">
             <Button
-              variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+              variant={viewMode === 'grid' ? 'default' : 'ghost'}
               size="icon"
               onClick={() => setViewMode('grid')}
-              className={`h-7 w-7 rounded ${viewMode === 'grid' ? 'bg-slate-100 text-slate-900' : 'text-slate-400'}`}
+              className={`h-7 w-7 rounded-md ${viewMode === 'grid' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-400'}`}
               title="Kanban View"
             >
               <LayoutGrid className="h-3.5 w-3.5" />
             </Button>
             <Button
-              variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+              variant={viewMode === 'table' ? 'default' : 'ghost'}
               size="icon"
               onClick={() => setViewMode('table')}
-              className={`h-7 w-7 rounded ${viewMode === 'table' ? 'bg-slate-100 text-slate-900' : 'text-slate-400'}`}
+              className={`h-7 w-7 rounded-md ${viewMode === 'table' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-400'}`}
               title="List View"
             >
               <List className="h-3.5 w-3.5" />
@@ -108,16 +108,16 @@ export default function Employees() {
         </div>
       </div>
 
-      {/* Department Filter Chips */}
-      <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+      {/* Department Filter Chips (0 Outlines) */}
+      <div className="flex items-center gap-1.5 overflow-x-auto py-1">
         {departments.map((dept) => (
           <button
             key={dept}
             onClick={() => setDeptFilter(dept)}
-            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
               deptFilter === dept
                 ? 'bg-[#714b67] text-white shadow-xs'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                : 'bg-white text-slate-600 hover:bg-slate-100 shadow-xs'
             }`}
           >
             {dept}
@@ -130,11 +130,11 @@ export default function Employees() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {filtered.map((emp) => (
             <Link key={emp.id} to={`/employees/${emp.id}`}>
-              <Card className="hover:border-slate-300 transition-colors h-full group">
+              <Card className="hover:shadow-md transition-all h-full group">
                 <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <Avatar className="h-10 w-10 border border-slate-200 shrink-0">
+                      <Avatar className="h-10 w-10 border-0 shadow-xs shrink-0">
                         <AvatarFallback className="bg-[#714b67]/10 text-[#714b67] font-semibold text-xs">
                           {getInitials(emp.name)}
                         </AvatarFallback>
@@ -154,7 +154,7 @@ export default function Employees() {
                     </Badge>
                   </div>
 
-                  <div className="space-y-1 pt-2 border-t border-slate-100 text-xs text-slate-500">
+                  <div className="space-y-1 pt-2 border-t border-slate-50 text-xs text-slate-500">
                     <div className="flex items-center gap-2 truncate">
                       <Building2 className="h-3 w-3 text-slate-400 shrink-0" />
                       <span className="truncate">{emp.department || 'General'}</span>
@@ -185,9 +185,9 @@ export default function Employees() {
             <TableBody>
               {filtered.map((emp) => (
                 <TableRow key={emp.id}>
-                  <TableCell className="font-medium text-slate-900">
+                  <TableCell className="font-semibold text-slate-900">
                     <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
+                      <Avatar className="h-6 w-6 border-0">
                         <AvatarFallback className="text-[10px] bg-[#714b67]/10 text-[#714b67]">
                           {getInitials(emp.name)}
                         </AvatarFallback>
@@ -196,7 +196,7 @@ export default function Employees() {
                     </div>
                   </TableCell>
                   <TableCell className="text-slate-600">{emp.department}</TableCell>
-                  <TableCell className="text-slate-900">{emp.job_position}</TableCell>
+                  <TableCell className="text-slate-900 font-medium">{emp.job_position}</TableCell>
                   <TableCell className="text-slate-500 font-mono text-[11px]">{emp.work_email}</TableCell>
                   <TableCell className="text-center">
                     <Badge variant={emp.status === 'On Leave' ? 'warning' : 'success'} className="text-[10px]">

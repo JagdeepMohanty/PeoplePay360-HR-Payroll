@@ -72,13 +72,13 @@ export default function Attendance() {
 
   return (
     <div className="space-y-4">
-      {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
+      {/* Top Action Bar (0 Outlines) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900">Attendance & Shifts</h1>
           <p className="text-xs text-slate-500">Live biometric punch-in logs and overtime tracking.</p>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8">
+        <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 shadow-xs">
           <Download className="h-3.5 w-3.5" /> Export Attendance
         </Button>
       </div>
@@ -94,7 +94,7 @@ export default function Attendance() {
                   {s.count}
                 </div>
               </div>
-              <div className={`p-2 rounded ${s.bg}`}>
+              <div className={`p-2 rounded-xl ${s.bg}`}>
                 <UserCheck className={`h-4 w-4 ${s.color}`} />
               </div>
             </CardContent>
@@ -110,19 +110,19 @@ export default function Attendance() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search employee or department..."
-            className="pl-8 h-8 text-xs bg-white"
+            className="pl-8 h-8 text-xs bg-white shadow-xs"
           />
         </div>
 
-        <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto">
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
           {['All', 'Present', 'Late', 'On Leave', 'Absent'].map((st) => (
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
-              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
                 statusFilter === st
                   ? 'bg-[#714b67] text-white shadow-xs'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 shadow-xs'
               }`}
             >
               {st}
@@ -148,7 +148,7 @@ export default function Attendance() {
           <TableBody>
             {filtered.map((rec) => (
               <TableRow key={rec.id}>
-                <TableCell className="font-medium text-slate-900">{rec.employee}</TableCell>
+                <TableCell className="font-semibold text-slate-900">{rec.employee}</TableCell>
                 <TableCell className="text-slate-500 text-xs">{rec.department}</TableCell>
                 <TableCell className="text-xs font-mono text-slate-700">{rec.check_in}</TableCell>
                 <TableCell className="text-xs font-mono text-slate-700">{rec.check_out}</TableCell>
