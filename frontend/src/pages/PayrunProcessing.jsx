@@ -6,7 +6,9 @@ import {
   validatePayrun,
   confirmPayrun,
   downloadPayslipPdfBlob,
+  sendPayslipsEmail,
 } from '../api/payruns'
+
 import { getEmployees } from '../api/employees'
 import GuardianWarningBanner from '../components/GuardianWarningBanner'
 import PayslipDetailModal from '../components/PayslipDetailModal'
@@ -104,10 +106,19 @@ export default function PayrunProcessing() {
     }
   }
 
-  const handleSendPayslips = () => {
-    setNotification('Batch email dispatch triggered! All payslips emailed to employees.')
-    setTimeout(() => setNotification(''), 4000)
+  const handleSendPayslips = async () => {
+    setActionLoading(true)
+    try {
+      const res = await sendPayslipsEmail(id)
+      setNotification(`Success! ${res.message || 'Dispatched payslip emails to employees.'}`)
+      setTimeout(() => setNotification(''), 4000)
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to dispatch payslip emails.')
+    } finally {
+      setActionLoading(false)
+    }
   }
+
 
   const getEmpObj = (empId) => {
     return employees.find((e) => e.id === empId)

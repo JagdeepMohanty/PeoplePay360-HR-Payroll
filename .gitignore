@@ -1,14 +1,36 @@
-# Python
+# Python / Backend
 __pycache__/
+/**/__pycache__/
 *.py[cod]
 *$py.class
-*.sqlite3
-*.db
+*.so
+.Python
+env/
 venv/
-.env
+.venv/
+ENV/
+*.sqlite3
+*.sqlite
+*.db
+.pytest_cache/
+
 
 # Node / Frontend
 node_modules/
+**/node_modules/
 dist/
-.ds_store
+**/dist/
+dist-ssr/
+*.local
+.npm
+.vite
 *.log
+
+# Environment & IDE
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

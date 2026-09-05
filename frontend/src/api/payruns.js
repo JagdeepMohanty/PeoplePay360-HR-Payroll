@@ -42,3 +42,9 @@ export const downloadPayslipPdfBlob = async (payslipId) => {
   })
   return res.data
 }
+
+export const sendPayslipsEmail = async (payrunId) => {
+  const res = await client.post(`/payruns/${payrunId}/send-payslips`)
+  return res.data
+}
+

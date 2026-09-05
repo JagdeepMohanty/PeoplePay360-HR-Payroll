@@ -172,17 +172,18 @@ export default function Dashboard() {
         {/* KPI 5 */}
         <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-2">
           <div className="flex items-center justify-between text-pink-400">
-            <span className="text-xs font-semibold text-slate-400">Attendance Hours</span>
+            <span className="text-xs font-semibold text-slate-400">Attendance Health</span>
             <Clock className="w-5 h-5 p-1 rounded-lg bg-pink-500/20" />
           </div>
           <div className="text-2xl font-black text-white">
-            {summary.total_worked_hours || 0}h
+            {summary.attendance_health !== undefined ? `${summary.attendance_health}%` : '100%'}
           </div>
           <div className="text-[11px] text-pink-400/80 font-medium">
-            Logs Count: {summary.attendance_count || 0}
+            {summary.total_worked_hours || 0}h worked ({summary.attendance_count || 0} logs)
           </div>
         </div>
       </div>
+
 
       {/* Visual Analytics Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

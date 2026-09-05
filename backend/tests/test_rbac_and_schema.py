@@ -179,6 +179,19 @@ class TestModulesA1ToA7(unittest.TestCase):
             403,
         )
 
+    def test_08_bulk_send_payslips_email(self):
+        """Verify bulk payslip PDF generation and email dispatch endpoint."""
+        res = self.client.post(
+            "/api/v1/payruns/1/send-payslips",
+            headers=self.auth_header("HR_PAYROLL_USER"),
+        )
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "success")
+        self.assertGreater(data["sent_count"], 0)
+        self.assertIn("dispatched_details", data)
+
 
 if __name__ == "__main__":
     unittest.main()
+

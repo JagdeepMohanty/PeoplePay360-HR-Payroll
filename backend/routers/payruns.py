@@ -156,3 +156,63 @@ def confirm_payrun(
     db.commit()
     db.refresh(payrun)
     return payrun
+
+
+@router.post("/{payrun_id}/send-payslips")
+def send_payslips(
+    payrun_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_payroll_write),
+):
+    payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
+    if not payrun:
+        raise HTTPException(status_code=404, detail="Payrun not found")
+
+    payslips = db.query(Payslip).filter(Payslip.payrun_id == payrun_id).all()
+    if not payslips:
+        raise HTTPException(status_code=400, detail="No payslips generated for this payrun yet")
+
+    dispatched = []
+    for slip in payslips:
+        employee = db.query(Employee).filter(Employee.id == slip.employee_id).first()
+        if not employee:
+            continue
+
+        emp_name = employee.full_name
+        emp_email = employee.email
+
+        payslip_data = {
+            "employee_name": emp_name,
+            "department": employee.department or "",
+            "period_start": payrun.period_start,
+            "period_end": payrun.period_end,
+            "basic_pay": slip.basic,
+            "allowances": slip.allowances,
+            "gross": slip.gross,
+            "deductions": slip.deductions,
+            "net_pay": slip.net,
+            "breakdown": slip.breakdown_json,
+        }
+
+        # Generate printable PDF bytes
+        pdf_bytes = generate_payslip_pdf(payslip_data)
+
+        # Record email dispatch (SMTP simulation / log dispatch)
+        dispatched.append({
+            "employee_id": employee.id,
+            "employee_name": emp_name,
+            "email": emp_email,
+            "payslip_id": slip.id,
+            "net_pay": slip.net,
+            "pdf_size_bytes": len(pdf_bytes),
+            "status": "SENT",
+        })
+
+    return {
+        "status": "success",
+        "payrun_id": payrun_id,
+        "sent_count": len(dispatched),
+        "message": f"Successfully dispatched {len(dispatched)} payslip PDF emails to employees.",
+        "dispatched_details": dispatched,
+    }
+

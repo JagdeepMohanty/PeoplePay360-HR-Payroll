@@ -1,37 +1,108 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Users, FileText, Clock, Umbrella, DollarSign } from 'lucide-react'
+import {
+  LayoutDashboard, Users, FileText, Clock, Umbrella,
+  DollarSign, ChevronRight, Layers, Sliders, CalendarCheck
+} from 'lucide-react'
 
-const links = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/employees', label: 'Employees', icon: Users },
-  { to: '/contracts', label: 'Contracts', icon: FileText },
-  { to: '/attendance', label: 'Attendance', icon: Clock },
-  { to: '/time-off', label: 'Time Off', icon: Umbrella },
-  { to: '/payruns', label: 'Payruns', icon: DollarSign },
+
+const navGroups = [
+  {
+    title: 'Overview',
+    items: [
+      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    ],
+  },
+  {
+    title: 'Human Resources',
+    items: [
+      { to: '/employees', label: 'Employees', icon: Users },
+      { to: '/attendance', label: 'Attendance', icon: Clock },
+      { to: '/time-off', label: 'Time Off', icon: Umbrella },
+      { to: '/schedules', label: 'Work Schedules', icon: CalendarCheck },
+    ],
+  },
+  {
+    title: 'Payroll & Compliance',
+    items: [
+      { to: '/contracts', label: 'Contracts', icon: FileText },
+      { to: '/payruns', label: 'Payruns', icon: DollarSign, badge: 'Active' },
+      { to: '/structures', label: 'Salary Structures', icon: Sliders },
+    ],
+  },
 ]
 
 export default function Sidebar() {
   return (
-    <aside className="w-56 bg-brand-900 text-white flex flex-col">
-      <div className="px-5 py-4 text-lg font-bold tracking-wide border-b border-brand-700">
-        PeoplePay360
+    <aside className="w-60 bg-white shadow-[1px_0_4px_rgba(0,0,0,0.03)] flex flex-col justify-between h-screen shrink-0 select-none z-20">
+      {/* Odoo App Header */}
+      <div className="h-14 px-4 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-lg bg-[#714b67] flex items-center justify-center text-white font-bold shadow-xs">
+            <Layers className="h-4 w-4" />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-semibold text-xs tracking-tight text-slate-900 flex items-center gap-1.5">
+              PeoplePay360
+              <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600">
+                Odoo 18
+              </span>
+            </span>
+            <span className="text-[11px] text-slate-400 font-normal">Payroll Guardian</span>
+          </div>
+        </div>
       </div>
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {links.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                isActive ? 'bg-brand-700 text-white' : 'text-blue-200 hover:bg-brand-700'
-              }`
-            }
-          >
-            <Icon size={16} />
-            {label}
-          </NavLink>
+
+      {/* Navigation Groups */}
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-5">
+        {navGroups.map((group) => (
+          <div key={group.title} className="space-y-1">
+            <h4 className="px-2.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+              {group.title}
+            </h4>
+            <div className="space-y-0.5 pt-0.5">
+              {group.items.map(({ to, label, icon: Icon, badge }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={({ isActive }) =>
+                    `flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      isActive
+                        ? 'bg-[#714b67]/10 text-[#714b67] font-semibold'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    }`
+                  }
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Icon className="h-4 w-4 shrink-0 opacity-80" />
+                    <span>{label}</span>
+                  </div>
+                  {badge && (
+                    <span className="text-[10px] font-medium px-2 py-0.2 rounded-full bg-teal-50 text-teal-700">
+                      {badge}
+                    </span>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          </div>
         ))}
-      </nav>
+      </div>
+
+      {/* User Section at bottom */}
+      <div className="p-3 bg-slate-50/60">
+        <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-100/80 transition-colors cursor-pointer">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="h-7 w-7 rounded-full bg-[#714b67]/15 text-[#714b67] text-xs font-semibold flex items-center justify-center">
+              LM
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium text-slate-800 truncate">Lucky Mohanty</span>
+              <span className="text-[10px] text-slate-400 truncate">Payroll Officer</span>
+            </div>
+          </div>
+          <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+        </div>
+      </div>
     </aside>
   )
 }

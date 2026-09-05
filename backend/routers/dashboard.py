@@ -79,6 +79,11 @@ def get_dashboard_metrics(
         by_department[dept_name]["deductions"] += slip.deductions
         by_department[dept_name]["headcount"] += 1
 
+    present_count = sum(1 for a in attendances if a.status == "PRESENT")
+    attendance_health = round((present_count / attendance_count * 100.0), 1) if attendance_count > 0 else 100.0
+    payslip_count = len(payslips)
+    average_salary = round(total_net / payslip_count, 2) if payslip_count > 0 else 0.0
+
     return {
         "summary": {
             "total_employees": total_employees,
@@ -87,11 +92,14 @@ def get_dashboard_metrics(
             "pending_leaves": pending_leaves,
             "approved_leaves": approved_leaves,
             "attendance_count": attendance_count,
+            "attendance_health": attendance_health,
             "total_worked_hours": round(total_worked_hours, 2),
             "total_gross": round(total_gross, 2),
             "total_net": round(total_net, 2),
             "total_deductions": round(total_deductions, 2),
-            "payslip_count": len(payslips),
+            "average_salary": average_salary,
+            "payslip_count": payslip_count,
         },
         "by_department": by_department,
     }
+

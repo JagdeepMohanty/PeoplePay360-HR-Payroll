@@ -1,7 +1,11 @@
 import enum
 from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Enum
 from sqlalchemy.orm import relationship
-from database import Base
+try:
+    from database import Base
+except ImportError:
+    from ..database import Base
+
 
 
 class LeaveStatus(str, enum.Enum):
