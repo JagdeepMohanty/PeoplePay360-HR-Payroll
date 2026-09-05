@@ -24,6 +24,7 @@ export default function App() {
           <Route path="time-off" element={<TimeOff />} />
           <Route path="payruns" element={<Payruns />} />
           <Route path="payruns/:id/process" element={<PayrunProcessing />} />
+          <Route path="reports" element={<Dashboard />} />
           {/* Wildcard Fallback prevents any 404 client route */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
