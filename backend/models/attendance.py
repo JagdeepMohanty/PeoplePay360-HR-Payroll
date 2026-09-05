@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from database import Base
+from ..database import Base
 
 
 class Attendance(Base):
@@ -10,5 +10,6 @@ class Attendance(Base):
     employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
     check_in = Column(DateTime, nullable=False)
     check_out = Column(DateTime, nullable=True)
+    status = Column(String, nullable=False, default="present")
 
     employee = relationship("Employee", back_populates="attendances")

@@ -1,4 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from ..enums import UserRole
+from ..auth.dependencies import get_current_user, require_officer, require_manager
+
+
 from sqlalchemy.orm import Session
 from database import get_db
 from models.leave import Leave, LeaveAllocation
@@ -8,12 +13,29 @@ router = APIRouter()
 
 
 @router.get("/", response_model=list[LeaveRead])
-def list_leaves(db: Session = Depends(get_db)):
-    return db.query(Leave).all()
+def list_leaves(
+    employee_id: int | None = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Employees can only see their own leaves
+    if current_user.role == UserRole.HR_EMPLOYEE:
+        if employee_id is not None and employee_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        employee_id = current_user.id
+    query = db.query(Leave)
+    if employee_id is not None:
+        query = query.filter(Leave.employee_id == employee_id)
+    return query.all()
 
 
 @router.post("/", response_model=LeaveRead, status_code=201)
-def submit_leave(payload: LeaveCreate, db: Session = Depends(get_db)):
+def submit_leave(
+    payload: LeaveCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_officer),
+):
+    # Employees can submit their own leave; officers can submit for any employee
     leave = Leave(**payload.model_dump())
     db.add(leave)
     db.commit()
