@@ -1,10 +1,7 @@
 import enum
 from sqlalchemy import Column, Integer, Float, String, Boolean, ForeignKey, Text, Enum
 from sqlalchemy.orm import relationship
-try:
-    from database import Base
-except ImportError:
-    from ..database import Base
+from database import Base
 
 
 
@@ -44,7 +41,7 @@ class SalaryRule(Base):
     __tablename__ = "salary_rules"
 
     id = Column(Integer, primary_key=True, index=True)
-    structure_id = Column(Integer, ForeignKey("salary_structures.id"), nullable=False)
+    structure_id = Column(Integer, ForeignKey("salary_structures.id"), nullable=False, index=True)
     name = Column(String, nullable=False)
     code = Column(String, nullable=False)
     category = Column(Enum(RuleCategory), nullable=False, default=RuleCategory.BASIC)
@@ -60,7 +57,7 @@ class Payrun(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    structure_id = Column(Integer, ForeignKey("salary_structures.id"), nullable=True)
+    structure_id = Column(Integer, ForeignKey("salary_structures.id"), nullable=True, index=True)
     period_start = Column(String, nullable=False)
     period_end = Column(String, nullable=False)
     status = Column(Enum(PayrunStatus), nullable=False, default=PayrunStatus.DRAFT)
@@ -73,9 +70,9 @@ class Payslip(Base):
     __tablename__ = "payslips"
 
     id = Column(Integer, primary_key=True, index=True)
-    payrun_id = Column(Integer, ForeignKey("payruns.id"), nullable=False)
-    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
-    contract_id = Column(Integer, ForeignKey("contracts.id"), nullable=False)
+    payrun_id = Column(Integer, ForeignKey("payruns.id"), nullable=False, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
+    contract_id = Column(Integer, ForeignKey("contracts.id"), nullable=False, index=True)
     basic = Column(Float, default=0.0)
     allowances = Column(Float, default=0.0)
     deductions = Column(Float, default=0.0)

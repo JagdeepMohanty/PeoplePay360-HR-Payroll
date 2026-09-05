@@ -7,7 +7,7 @@ class Attendance(Base):
     __tablename__ = "attendances"
 
     id = Column(Integer, primary_key=True, index=True)
-    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
     check_in = Column(DateTime, nullable=False)
     check_out = Column(DateTime, nullable=True)
     worked_hours = Column(Float, default=0.0)

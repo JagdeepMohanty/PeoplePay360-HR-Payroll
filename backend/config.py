@@ -25,10 +25,10 @@ class Settings(BaseSettings):
         env_file = ".env"
         case_sensitive = False
 
-    def __post_init__(self):
-        # Ensure storage dir exists at runtime (called after settings instance creation)
+    def model_post_init(self, __context):
+        # Ensure storage dir exists at runtime
         os.makedirs(self.pdf_storage_path, exist_ok=True)
 
-# Instantiate settings; __post_init__ will create storage dir
+# Instantiate settings; model_post_init will create storage dir
 settings = Settings()
 

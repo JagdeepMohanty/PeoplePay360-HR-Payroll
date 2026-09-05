@@ -19,12 +19,12 @@ export default function Navbar() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
   const navItems = [
-    { to: '/dashboard', label: 'Dashboard', icon: BarChart3 },
     { to: '/employees', label: 'Employees', icon: Users },
     { to: '/contracts', label: 'Contracts', icon: FileText },
     { to: '/attendance', label: 'Attendance', icon: Clock },
     { to: '/time-off', label: 'Time Off', icon: Calendar },
     { to: '/payruns', label: 'Payroll', icon: DollarSign },
+    { to: '/reports', label: 'Reports', icon: BarChart3 },
   ]
 
   const getRoleBadgeColor = (role) => {

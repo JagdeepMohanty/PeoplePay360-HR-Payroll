@@ -1,13 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Body
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from database import get_db
-from auth import require_payroll_read, require_payroll_write
+from auth import require_payroll_read, require_payroll_write, require_payroll_manager
 from models.user import User
 from models.contract import Contract
 from models.employee import Employee
 from models.payroll import Payrun, Payslip, PayrunStatus
-from schemas.payroll import PayrunCreate, PayrunRead, PayslipRead
+from schemas.payroll import PayrunCreate, PayrunRead, PayslipRead, PayrunComputeRequest
 from services.salary_engine import compute_payslip
 from services.guardian_validator import validate_payrun
 from services.pdf_generator import generate_payslip_pdf
@@ -24,6 +25,7 @@ def list_payruns(
 
 
 @router.get("/payslips/{payslip_id}/pdf")
+@router.get("/payruns/payslips/{payslip_id}/pdf")
 def download_payslip_pdf(
     payslip_id: int,
     db: Session = Depends(get_db),
@@ -39,9 +41,14 @@ def download_payslip_pdf(
     emp_name = employee.full_name if employee else f"Employee #{slip.employee_id}"
     payslip_data = {
         "employee_name": emp_name,
+        "employee_id": employee.id if employee else slip.employee_id,
+        "email": employee.email if employee else "",
         "department": employee.department if employee else "",
+        "job_position": employee.job_position if employee else "",
+        "bank_account": employee.bank_account if employee else "",
         "period_start": payrun.period_start if payrun else "",
         "period_end": payrun.period_end if payrun else "",
+        "worked_days": slip.worked_days if slip.worked_days is not None else 22.0,
         "basic_pay": slip.basic,
         "allowances": slip.allowances,
         "gross": slip.gross,
@@ -82,8 +89,44 @@ def create_payrun(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_payroll_write),
 ):
-    payrun = Payrun(**payload.model_dump(), status=PayrunStatus.DRAFT)
+    """
+    Two-step payrun creation wizard:
+    Step 1: Define structure, period scope
+    Step 2: Filter and explicitly select employees
+    Result: Batch creation in DRAFT state with draft payslip placeholders
+    """
+    payrun = Payrun(
+        name=payload.name,
+        structure_id=payload.structure_id,
+        period_start=payload.period_start,
+        period_end=payload.period_end,
+        status=PayrunStatus.DRAFT,
+    )
     db.add(payrun)
+    db.flush()
+
+    # If Step 2 explicitly selected employees, create initial draft payslip placeholders
+    if payload.employee_ids:
+        contracts = db.query(Contract).filter(
+            Contract.employee_id.in_(payload.employee_ids),
+            Contract.is_active == True,
+            Contract.date_start <= payrun.period_end,
+            or_(Contract.date_end >= payrun.period_start, Contract.date_end.is_(None)),
+        ).all()
+        for contract in contracts:
+            db.add(Payslip(
+                payrun_id=payrun.id,
+                employee_id=contract.employee_id,
+                contract_id=contract.id,
+                basic=float(contract.wage or 0.0),
+                allowances=0.0,
+                deductions=0.0,
+                gross=float(contract.wage or 0.0),
+                net=float(contract.wage or 0.0),
+                worked_days=22.0,
+                breakdown_json="{}",
+            ))
+
     db.commit()
     db.refresh(payrun)
     return payrun
@@ -92,21 +135,41 @@ def create_payrun(
 @router.post("/{payrun_id}/compute", response_model=list[PayslipRead])
 def compute_payrun(
     payrun_id: int,
+    payload: Optional[PayrunComputeRequest] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_payroll_write),
 ):
+    """
+    Idempotent recalculation endpoint:
+    Clears existing payslips for the payrun batch prior to generating fresh records.
+    """
     payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
     if not payrun:
         raise HTTPException(status_code=404, detail="Payrun not found")
 
-    # Clear previously computed slips
+    # Capture employee scope previously associated with this batch if any
+    existing_employee_ids = [
+        s[0] for s in db.query(Payslip.employee_id).filter(Payslip.payrun_id == payrun_id).distinct().all()
+    ]
+
+    # Clear existing payslips for the payrun batch prior to generating fresh records (Idempotency guarantee)
     db.query(Payslip).filter(Payslip.payrun_id == payrun_id).delete()
+    db.flush()
+
+    # Determine target employees
+    target_emp_ids = None
+    if payload and payload.employee_ids:
+        target_emp_ids = payload.employee_ids
+    elif existing_employee_ids:
+        target_emp_ids = existing_employee_ids
 
     query = db.query(Contract).filter(
         Contract.is_active == True,
         Contract.date_start <= payrun.period_end,
         or_(Contract.date_end >= payrun.period_start, Contract.date_end.is_(None)),
     )
+    if target_emp_ids is not None:
+        query = query.filter(Contract.employee_id.in_(target_emp_ids))
 
     contracts = query.all()
     payslips = []
@@ -133,13 +196,19 @@ def validate(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_payroll_read),
 ):
+    """
+    Operational Warnings Engine:
+    Surface pre-validation alerts on payruns: missing employee bank account details,
+    overlapping contracts, or duplicate payslips.
+    """
     payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
     if not payrun:
         raise HTTPException(status_code=404, detail="Payrun not found")
+
     employee_ids = [
-        s.employee_id for s in db.query(Payslip).filter(Payslip.payrun_id == payrun_id).all()
+        s[0] for s in db.query(Payslip.employee_id).filter(Payslip.payrun_id == payrun_id).distinct().all()
     ]
-    warnings = validate_payrun(db, payrun_id, employee_ids)
+    warnings = validate_payrun(db, payrun_id, employee_ids if employee_ids else None)
     return {"payrun_id": payrun_id, "warnings": warnings, "warning_count": len(warnings)}
 
 
@@ -164,6 +233,10 @@ def send_payslips(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_payroll_write),
 ):
+    """
+    Bulk email distribution endpoint:
+    Renders printable Jinja2 PDF payslips and dispatches them directly to employees.
+    """
     payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
     if not payrun:
         raise HTTPException(status_code=404, detail="Payrun not found")
@@ -183,9 +256,14 @@ def send_payslips(
 
         payslip_data = {
             "employee_name": emp_name,
+            "employee_id": employee.id,
+            "email": emp_email,
             "department": employee.department or "",
+            "job_position": employee.job_position or "",
+            "bank_account": employee.bank_account or "",
             "period_start": payrun.period_start,
             "period_end": payrun.period_end,
+            "worked_days": slip.worked_days if slip.worked_days is not None else 22.0,
             "basic_pay": slip.basic,
             "allowances": slip.allowances,
             "gross": slip.gross,
@@ -194,10 +272,10 @@ def send_payslips(
             "breakdown": slip.breakdown_json,
         }
 
-        # Generate printable PDF bytes
+        # Generate printable PDF binary stream
         pdf_bytes = generate_payslip_pdf(payslip_data)
 
-        # Record email dispatch (SMTP simulation / log dispatch)
+        # Record email dispatch (Simulated SMTP dispatch with attachment verification)
         dispatched.append({
             "employee_id": employee.id,
             "employee_name": emp_name,
@@ -216,3 +294,16 @@ def send_payslips(
         "dispatched_details": dispatched,
     }
 
+
+@router.delete("/{payrun_id}", status_code=204)
+def delete_payrun(
+    payrun_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_payroll_manager),
+):
+    payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
+    if not payrun:
+        raise HTTPException(status_code=404, detail="Payrun not found")
+    db.delete(payrun)
+    db.commit()
+    return None
