@@ -1,10 +1,20 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { logAttendance } from '../api/attendance'
+import { useAuth } from '../context/AuthContext'
 import { X, Clock, Check } from 'lucide-react'
 
 export default function AttendanceModal({ isOpen, onClose, onSuccess, employees = [] }) {
+  const { user, activeRole } = useAuth()
+  const isEmployeeRole = activeRole === 'EMPLOYEE' && !!user?.employee_id
+
+  const getInitialEmpId = () => {
+    if (isEmployeeRole) return user.employee_id
+    if (employees.length > 0) return employees[0].id
+    return ''
+  }
+
   const [formData, setFormData] = useState({
-    employee_id: employees.length > 0 ? employees[0].id : 1,
+    employee_id: getInitialEmpId(),
     check_in: new Date().toISOString().slice(0, 16),
     check_out: '',
     worked_hours: 8.0,
@@ -13,7 +23,22 @@ export default function AttendanceModal({ isOpen, onClose, onSuccess, employees 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  if (!isOpen) return null
+  useEffect(() => {
+    if (isOpen) {
+      const selectedId = isEmployeeRole
+        ? user.employee_id
+        : (employees.length > 0 ? employees[0].id : '')
+
+      setFormData({
+        employee_id: selectedId,
+        check_in: new Date().toISOString().slice(0, 16),
+        check_out: '',
+        worked_hours: 8.0,
+        status: 'PRESENT',
+      })
+      setError('')
+    }
+  }, [isOpen, employees, activeRole, user])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -59,15 +84,18 @@ export default function AttendanceModal({ isOpen, onClose, onSuccess, employees 
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Employee</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">
+              Employee {isEmployeeRole && <span className="text-[10px] text-amber-600 font-normal">(Locked to Self)</span>}
+            </label>
             <select
               value={formData.employee_id}
+              disabled={isEmployeeRole}
               onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-slate-50 text-slate-800 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#714b67]/20 border-0 outline-none"
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 text-slate-800 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#714b67]/20 border-0 outline-none disabled:opacity-75 disabled:cursor-not-allowed"
             >
               {employees.map((emp) => (
                 <option key={emp.id} value={emp.id}>
-                  {emp.full_name || emp.name || `Employee #${emp.id}`} ({emp.department})
+                  {emp.full_name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || `Employee #${emp.id}`} ({emp.department})
                 </option>
               ))}
             </select>
