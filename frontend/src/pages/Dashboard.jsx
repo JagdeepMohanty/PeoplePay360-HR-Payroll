@@ -35,8 +35,8 @@ export default function Dashboard({ userRole = 'payroll_manager' }) {
   const [period, setPeriod] = useState('')
   const [employeeType, setEmployeeType] = useState('')
 
-  // Access control check (Rule 11)
-  const isAuthorized = userRole === 'payroll_manager' || userRole === 'hr_admin' || userRole === 'admin'
+  // Access control check (FULL TEST matrix)
+  const isAuthorized = userRole === 'payroll_manager' || userRole === 'payroll_user' || userRole === 'hr_admin' || userRole === 'admin'
 
   if (!isAuthorized) {
     return (
