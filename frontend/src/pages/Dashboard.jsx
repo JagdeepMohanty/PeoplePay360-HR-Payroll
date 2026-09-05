@@ -12,8 +12,12 @@ export default function Dashboard() {
     queryFn: () => getDashboard({ dept, period }),
   })
 
-  const chartData = data
-    ? Object.entries(data.by_department).map(([name, v]) => ({ name, Gross: v.gross, Net: v.net }))
+  const chartData = data?.by_department
+    ? Object.entries(data.by_department).map(([name, v]) => ({
+        name,
+        Gross: v?.gross || 0,
+        Net: v?.net || 0,
+      }))
     : []
 
   return (
@@ -37,25 +41,30 @@ export default function Dashboard() {
             ].map(({ label, value }) => (
               <div key={label} className="bg-white rounded-xl border p-4">
                 <p className="text-xs text-gray-500">{label}</p>
-                <p className="text-2xl font-bold text-gray-800 mt-1">${value?.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-gray-800 mt-1">${(value ?? 0).toLocaleString()}</p>
               </div>
             ))}
           </div>
 
           <div className="bg-white rounded-xl border p-4">
             <p className="text-sm font-medium text-gray-700 mb-3">Gross vs Net by Department</p>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={chartData}>
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="Gross" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Net" fill="#10b981" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {chartData.length === 0 ? (
+              <p className="text-xs text-gray-400 py-10 text-center">No department analytics data available</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={chartData}>
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Bar dataKey="Gross" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Net" fill="#10b981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </>
       )}
     </div>
   )
 }
+

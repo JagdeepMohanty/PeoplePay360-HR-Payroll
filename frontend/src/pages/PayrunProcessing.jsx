@@ -16,7 +16,7 @@ export default function PayrunProcessing() {
 
   const { mutate: validate, isPending: validating } = useMutation({
     mutationFn: () => validatePayrun(id),
-    onSuccess: (data) => setWarnings(data.warnings),
+    onSuccess: (data) => setWarnings(data?.warnings || []),
   })
 
   const { mutate: confirm, isPending: confirming } = useMutation({
