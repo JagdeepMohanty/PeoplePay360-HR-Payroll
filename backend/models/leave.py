@@ -1,10 +1,7 @@
 import enum
 from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Enum
 from sqlalchemy.orm import relationship
-try:
-    from database import Base
-except ImportError:
-    from ..database import Base
+from database import Base
 
 
 
@@ -31,8 +28,8 @@ class LeaveAllocation(Base):
     __tablename__ = "leave_allocations"
 
     id = Column(Integer, primary_key=True, index=True)
-    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
-    type_id = Column(Integer, ForeignKey("time_off_types.id"), nullable=False)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
+    type_id = Column(Integer, ForeignKey("time_off_types.id"), nullable=False, index=True)
     allocated_days = Column(Float, nullable=False)
     used_days = Column(Float, default=0.0)
     year = Column(Integer, nullable=False)
@@ -49,8 +46,8 @@ class LeaveRequest(Base):
     __tablename__ = "leave_requests"
 
     id = Column(Integer, primary_key=True, index=True)
-    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
-    type_id = Column(Integer, ForeignKey("time_off_types.id"), nullable=False)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
+    type_id = Column(Integer, ForeignKey("time_off_types.id"), nullable=False, index=True)
     date_from = Column(String, nullable=False)
     date_to = Column(String, nullable=False)
     duration_days = Column(Float, default=1.0)

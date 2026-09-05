@@ -7,13 +7,13 @@ class Contract(Base):
     __tablename__ = "contracts"
 
     id = Column(Integer, primary_key=True, index=True)
-    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
     wage = Column(Float, nullable=False)
     date_start = Column(String, nullable=False)
     date_end = Column(String, nullable=True)
     department = Column(String, nullable=True)
     job_position = Column(String, nullable=True)
-    salary_structure_id = Column(Integer, ForeignKey("salary_structures.id"), nullable=True)
+    salary_structure_id = Column(Integer, ForeignKey("salary_structures.id"), nullable=True, index=True)
     is_active = Column(Boolean, default=True)
 
     employee = relationship("Employee", back_populates="contracts")

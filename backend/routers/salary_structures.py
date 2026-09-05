@@ -84,6 +84,20 @@ def create_salary_rule(
     return rule
 
 
+@router.delete("/{structure_id}", status_code=204)
+def delete_salary_structure(
+    structure_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_salary_structure_write),
+):
+    struct = db.query(SalaryStructure).filter(SalaryStructure.id == structure_id).first()
+    if not struct:
+        raise HTTPException(status_code=404, detail="Salary structure not found")
+    db.delete(struct)
+    db.commit()
+    return None
+
+
 @router.delete("/rules/{rule_id}", status_code=204)
 def delete_salary_rule(
     rule_id: int,
@@ -96,3 +110,4 @@ def delete_salary_rule(
     db.delete(rule)
     db.commit()
     return None
+

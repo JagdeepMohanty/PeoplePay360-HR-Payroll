@@ -126,12 +126,24 @@ require_salary_structure_write = require_roles(
 )
 
 
-# 6. Admin Only Guard
+# 6. Payroll Full CRUD / Delete Guard (HR_PAYROLL_MANAGER, ADMIN)
+# HR_PAYROLL_USER is explicitly excluded from destructive DELETE operations.
+require_payroll_manager = require_roles(
+    UserRole.HR_PAYROLL_MANAGER,
+    UserRole.ADMIN,
+)
+
+
+# 7. Admin Only Guard
 require_admin = require_roles(UserRole.ADMIN)
 
 
-# Helper for checking if an employee is accessing their own data or has HR/Admin rights
+# ---------------------------------------------------------------------------
+# Self-Access Helpers
+# ---------------------------------------------------------------------------
+
 def check_employee_self_or_hr(target_employee_id: int, current_user: User) -> bool:
+    """Return True if the user is HR+ or is the target employee themselves."""
     if current_user.role in [
         UserRole.HR_MANAGER,
         UserRole.HR_PAYROLL_USER,
@@ -142,3 +154,19 @@ def check_employee_self_or_hr(target_employee_id: int, current_user: User) -> bo
     if current_user.role == UserRole.EMPLOYEE and current_user.employee_id == target_employee_id:
         return True
     return False
+
+
+def require_employee_self_or_hr(target_employee_id: int):
+    """
+    Dependency factory: EMPLOYEE role can only access their own data.
+    HR_MANAGER and above can access any employee's data.
+    Raises 403 if an EMPLOYEE tries to access another employee's data.
+    """
+    def checker(current_user: User = Depends(get_current_user)) -> User:
+        if not check_employee_self_or_hr(target_employee_id, current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access restricted to own data",
+            )
+        return current_user
+    return checker
