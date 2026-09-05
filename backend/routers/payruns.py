@@ -39,7 +39,9 @@ def download_payslip_pdf(
     emp_name = employee.full_name if employee else f"Employee #{slip.employee_id}"
     payslip_data = {
         "employee_name": emp_name,
-        "department": employee.department if employee else "",
+        "department": employee.department if employee else "General",
+        "job_position": employee.job_position if employee else "Staff Member",
+        "bank_account": employee.bank_account if employee else "Direct Deposit",
         "period_start": payrun.period_start if payrun else "",
         "period_end": payrun.period_end if payrun else "",
         "basic_pay": slip.basic,
@@ -76,6 +78,7 @@ def get_payrun(
     return payrun
 
 
+@router.post("/", response_model=PayrunRead, status_code=201)
 @router.post("/wizard", response_model=PayrunRead, status_code=201)
 def create_payrun(
     payload: PayrunCreate,
@@ -183,7 +186,9 @@ def send_payslips(
 
         payslip_data = {
             "employee_name": emp_name,
-            "department": employee.department or "",
+            "department": employee.department or "General",
+            "job_position": employee.job_position or "Staff Member",
+            "bank_account": employee.bank_account or "Direct Deposit",
             "period_start": payrun.period_start,
             "period_end": payrun.period_end,
             "basic_pay": slip.basic,
