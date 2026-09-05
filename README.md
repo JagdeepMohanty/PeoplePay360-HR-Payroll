@@ -3,300 +3,134 @@
 
 > **Unifying Master HR Data, Time Tracking, and Automated Payroll Calculations into One Connected Flow.**
 
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen) ![License](https://img.shields.io/badge/license-MIT-blue) ![Tech Stack](https://img.shields.io/badge/stack-Odoo%20%7C%20Python%20%7C%20PostgreSQL-blueviolet) ![Version](https://img.shields.io/badge/version-v1.0.0-orange) ![Hackathon](https://img.shields.io/badge/hackathon-entry-gold)
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen) ![License](https://img.shields.io/badge/license-MIT-blue) ![Stack](https://img.shields.io/badge/stack-FastAPI%20%7C%20React%20%7C%20PostgreSQL-blueviolet) ![Version](https://img.shields.io/badge/version-v1.0.0-orange) ![Hackathon](https://img.shields.io/badge/hackathon-entry-gold)
 
 ---
 
-## The Problem
-
-Traditional HR tools trap employee details, attendance, leave, and salary data in isolated silos. Real operational teams need historical contract validity, automated schedule integration, rule-based payrun engines, and real-time dashboard analytics working **in harmony** — not across five disconnected spreadsheets.
-
-**PeoplePay360** solves this by delivering a single, end-to-end platform where every HR event — from a new hire to a final payslip — flows through one connected, validated pipeline.
-
----
-
-## System Architecture & Key Capabilities
-
-### 1. Unified HR Hub
-- Centralized employee profiles with **smart action buttons** linking directly to active Contracts, Attendance records, and Leave balances.
-- Single source of truth for all downstream payroll and reporting operations.
-
-### 2. Period-Aware Contract Engine
-- Payroll execution is **locked to the active, period-specific contract** — no stale or overlapping contract data bleeds into a payrun.
-- Full contract history is preserved for audit trails without polluting live computations.
-
-### 3. Attendance & Time Off Operations
-- Flexible work schedule assignment per employee or department.
-- Exception handling for late arrivals and missing check-outs with configurable grace rules.
-- Leave allocation tracking with **automatic balance deductions** triggered on manager approval.
-
-### 4. 2-Step Payrun Wizard & Rule Execution
-- **Step 1 — Scope Selection:** Define payroll period, company, and department scope.
-- **Step 2 — Employee Filtering:** Auto-populate eligible employees based on active contracts within the selected period.
-- **Sequential Salary Rule Evaluation:** `Basic Pay → Allowances → Gross → Deductions → Net Pay`
-
-### 5. Automated Validation & Warning Flags
-Pre-computation checks surface actionable warnings before a payrun is confirmed:
-- Missing bank account information
-- Concurrent / overlapping active contracts
-- Duplicate payslip detection for the same period
-
-### 6. Delivery & Live Analytics
-- Dynamic **PDF payslip generation** with itemized salary rule breakdown.
-- **Bulk email distribution** to employees directly from the payrun record.
-- Live aggregation dashboards with **Department** and **Period** filters for real-time payroll insights.
-
----
-
-## Data Flow / Pipeline Architecture
+## Architecture — Option C: FastAPI + React
 
 ```
-┌─────────────────────┐
-│  Employee Master     │  ← Profiles, Roles, Departments
-│  Data               │
-└────────┬────────────┘
-         │
-         ▼
-┌─────────────────────┐
-│  Contracts &         │  ← Period-bound, Schedule-linked
-│  Schedules          │
-└────────┬────────────┘
-         │
-         ▼
-┌─────────────────────┐
-│  Attendance &        │  ← Check-ins, Exceptions, Leave Allocations
-│  Leave              │
-└────────┬────────────┘
-         │
-         ▼
-┌─────────────────────┐
-│  Payrun Creation     │  ← 2-Step Wizard: Scope → Employee Filter
-│  Wizard             │
-└────────┬────────────┘
-         │
-         ▼
-┌─────────────────────┐
-│  Salary Rule         │  ← Basic → Allowances → Gross → Deductions → Net
-│  Computation        │
-└────────┬────────────┘
-         │
-         ▼
-┌─────────────────────┐
-│  Warnings &          │  ← Bank Info / Duplicate / Concurrent Contract Checks
-│  Validation         │
-└────────┬────────────┘
-         │
-         ▼
-┌─────────────────────┐
-│  PDF / Email         │  ← Payslip Generation & Bulk Distribution
-│  Delivery           │
-└────────┬────────────┘
-         │
-         ▼
-┌─────────────────────┐
-│  Live Dashboard      │  ← Aggregated Analytics by Dept & Period
-│  Aggregation        │
-└─────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    React Frontend                        │
+│   Vite · TanStack Query · Tailwind · Recharts · Lucide  │
+│   http://localhost:5173                                  │
+└──────────────────────┬──────────────────────────────────┘
+                       │  /api/v1/*  (Vite proxy)
+┌──────────────────────▼──────────────────────────────────┐
+│                   FastAPI Backend                        │
+│   Python 3.11 · SQLAlchemy ORM · Pydantic v2            │
+│   http://localhost:8000  ·  Swagger: /docs               │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────┐
+│              PostgreSQL / SQLite (dev)                   │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Role-Based Access Control (RBAC)
+## Operational Requirements
 
-| Capability                        | Admin | HR Payroll Manager | HR Payroll User | HR Manager | Employee |
-|-----------------------------------|:-----:|:------------------:|:---------------:|:----------:|:--------:|
-| Manage Employee Profiles          | ✅    | ✅                 | ✅              | ✅         | ❌       |
-| Create / Edit Contracts           | ✅    | ✅                 | ❌              | ✅         | ❌       |
-| View Own Contract                 | ✅    | ✅                 | ✅              | ✅         | ✅       |
-| Manage Work Schedules             | ✅    | ✅                 | ❌              | ✅         | ❌       |
-| Approve / Reject Leave Requests   | ✅    | ✅                 | ❌              | ✅         | ❌       |
-| Submit Leave Requests             | ✅    | ✅                 | ✅              | ✅         | ✅       |
-| Run Payrun Wizard                 | ✅    | ✅                 | ❌              | ❌         | ❌       |
-| Compute & Confirm Payruns         | ✅    | ✅                 | ❌              | ❌         | ❌       |
-| View Payslip Breakdown            | ✅    | ✅                 | ✅              | ❌         | ✅ (own) |
-| Generate & Send PDF Payslips      | ✅    | ✅                 | ❌              | ❌         | ❌       |
-| View Live Analytics Dashboard     | ✅    | ✅                 | ✅              | ✅         | ❌       |
-| Manage Salary Rules               | ✅    | ✅                 | ❌              | ❌         | ❌       |
-| Configure RBAC / User Roles       | ✅    | ❌                 | ❌              | ❌         | ❌       |
+| Capability | Implementation |
+|---|---|
+| **Unified Employee Hub** | Employee profiles with SmartButtons linking to Contracts, Attendance, and Leave |
+| **Period-Aware Contract Selection** | Payrun compute queries only `state=running` contracts; period filters applied at DB level |
+| **Attendance & Leave Tracking** | Check-in/out logging; leave submit → manager approve → balance deduction |
+| **Salary Rule Execution** | `salary_engine.py` evaluates: Basic → Allowances → Gross → Deductions → Net |
+| **2-Step Payrun Wizard** | Step 1: period + scope; Step 2: department filter → auto-populate eligible employees |
+| **Guardian Anomaly Alerts** | `guardian_validator.py` checks: missing bank account, concurrent contracts, duplicate payslips |
+| **Live Analytics Dashboard** | Recharts bar chart aggregated by department; `?dept=` and `?period=` query filters |
+| **PDF Payslip Generation** | Jinja2 HTML → WeasyPrint PDF bytes; itemised breakdown from salary engine |
 
 ---
 
-## Local Setup & Installation
-
-### Prerequisites
-- Python 3.10+
-- PostgreSQL 14+
-- Node.js 18+ (for frontend tooling / seed scripts)
-- Odoo 16 or 17 Community / Enterprise
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/your-org/peoplepay360.git
-cd peoplepay360
-```
-
-### 2. Configure Environment Variables
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` with your local values:
-
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=peoplepay360
-DB_USER=odoo
-DB_PASSWORD=your_password
-
-ODOO_ADMIN_PASSWD=admin
-SMTP_HOST=smtp.yourprovider.com
-SMTP_PORT=587
-SMTP_USER=your_email@domain.com
-SMTP_PASSWORD=your_smtp_password
-
-PDF_STORAGE_PATH=./storage/payslips
-```
-
-### 3. Backend Setup
-
-```bash
-# Create and activate a virtual environment
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-
-# Install Python dependencies
-pip install -r requirements.txt
-```
-
-### 4. Frontend Setup
-
-```bash
-cd frontend
-npm install
-npm run build
-```
-
-### 5. Database Migrations
-
-```bash
-# Initialize the Odoo database with the PeoplePay360 modules
-python odoo-bin -d peoplepay360 -i peoplepay360_hr,peoplepay360_payroll --stop-after-init
-```
-
-### 6. Seed Demo Data
-
-```bash
-npm run seed
-```
-
-> This populates the database with demo employees, contracts, schedules, leave allocations, and a sample payrun for immediate evaluation.
-
-### 7. Start the Server
-
-```bash
-python odoo-bin -d peoplepay360 --http-port=8069
-```
-
-Navigate to `http://localhost:8069` and log in with `admin / admin`.
-
----
-
-## API Reference
-
-| Method | Endpoint                          | Description                                              |
-|--------|-----------------------------------|----------------------------------------------------------|
-| `POST` | `/api/v1/payruns/wizard`          | Initialize a new payrun — accepts period, scope, and department filters |
-| `POST` | `/api/v1/payruns/:id/compute`     | Trigger sequential salary rule computation for a confirmed payrun |
-| `GET`  | `/api/v1/reports/dashboard`       | Fetch aggregated payroll analytics; supports `?dept=` and `?period=` query params |
-| `POST` | `/api/v1/time-off/approve`        | Approve a pending leave request and trigger automatic balance deduction |
-
-**Example — Initialize Payrun Wizard:**
-
-```json
-POST /api/v1/payruns/wizard
-{
-  "period_start": "2025-07-01",
-  "period_end": "2025-07-31",
-  "department_id": 4,
-  "company_id": 1
-}
-```
-
----
-
-## Hackathon Demo Walkthrough (5-Min Guide)
-
-### Flow 1 — Employee Lifecycle & Leave Management
-
-- **Step 1:** Navigate to **Employees → New** and create a profile with department, job position, and work schedule.
-- **Step 2:** Open the employee record → click the **Contracts** smart button → create a new contract with a defined start date, wage, and salary structure. Set status to **Running**.
-- **Step 3:** Go to **Time Off → New Request** for the employee. Select leave type, dates, and submit.
-- **Step 4:** As HR Manager, navigate to **Time Off → Managers → All Time Off** → approve the request.
-- **Step 5:** Verify the employee's leave **allocation balance is automatically decremented** on the Leave Analysis report.
-
-### Flow 2 — Payrun Execution & Payslip Delivery
-
-- **Step 1:** Navigate to **Payroll → Payrun Wizard** → select the July 2025 period and target department.
-- **Step 2:** Review the auto-populated employee list (only employees with active contracts in-period are included).
-- **Step 3:** Click **Compute** — observe sequential rule evaluation: `Basic → Allowances → Gross → Deductions → Net`.
-- **Step 4:** Review the **Warnings panel** — resolve any flagged missing bank accounts or duplicate payslip alerts.
-- **Step 5:** Click **Confirm Payrun** → **Generate PDFs** → **Send by Email** to distribute payslips in bulk.
-- **Step 6:** Open the **Analytics Dashboard** → filter by Department and Period to view live aggregated payroll totals.
-
----
-
-## Project Structure
+## Monorepo Structure
 
 ```
 peoplepay360/
-├── addons/
-│   ├── peoplepay360_hr/          # Employee, Contract, Schedule modules
-│   └── peoplepay360_payroll/     # Payrun Wizard, Salary Rules, PDF & Email
-├── frontend/
-│   ├── src/
-│   │   ├── views/                # Kanban, Form, List views
-│   │   └── components/           # Dashboard, Payslip Breakdown
-│   └── package.json
-├── scripts/
-│   └── seed.js                   # Demo data seeder
-├── .env.example
-├── requirements.txt
-└── README.md
+├── README.md                  ← You are here
+├── backend/
+│   ├── main.py                # FastAPI app entry point
+│   ├── config.py              # Environment settings
+│   ├── database.py            # SQLAlchemy engine & session
+│   ├── seed.py                # Demo data seeder
+│   ├── models/                # ORM: Employee, Contract, Attendance, Leave, Payroll
+│   ├── schemas/               # Pydantic validation schemas
+│   ├── routers/               # Route handlers per domain
+│   ├── services/
+│   │   ├── salary_engine.py   # Rule sequencing engine
+│   │   ├── guardian_validator.py  # Anomaly detector
+│   │   └── pdf_generator.py   # Payslip PDF renderer
+│   └── requirements.txt
+└── frontend/
+    ├── src/
+    │   ├── api/               # Axios client + domain API calls
+    │   ├── components/        # Layout, Sidebar, SmartButtons, Wizard, Warnings
+    │   └── pages/             # Dashboard, Employees, Payruns, Processing
+    ├── package.json
+    └── vite.config.js
 ```
 
 ---
 
-## Tech Stack
+## Quick Start
 
-| Layer        | Technology                        |
-|--------------|-----------------------------------|
-| Backend      | Python 3.10, Odoo 17 ORM          |
-| Database     | PostgreSQL 14                     |
-| Frontend     | Odoo QWeb, OWL (Odoo Web Library) |
-| PDF Engine   | ReportLab / Odoo Report Engine    |
-| Email        | SMTP via Odoo Mail Module         |
-| Auth & RBAC  | Odoo Groups & Record Rules        |
-| Dev Tooling  | Node.js 18, npm                   |
+```bash
+# Backend
+cd backend
+python -m venv venv && venv\Scripts\activate
+pip install -r requirements.txt
+python seed.py
+uvicorn main:app --reload
+
+# Frontend (new terminal)
+cd frontend
+npm install
+npm run dev
+```
+
+| Service | URL |
+|---|---|
+| React App | http://localhost:5173 |
+| FastAPI | http://localhost:8000 |
+| Swagger UI | http://localhost:8000/docs |
 
 ---
 
-## Team
+## Team Task Delegation Matrix
 
-| Name         | Role                                                                 |
-|--------------|----------------------------------------------------------------------|
-| **Jagdeep** *(Leader)* | Project Lead · Git Management · DB Architecture · Salary Rule Engine |
-| **Tanya**    | Backend Engineering · API Development · PDF & Email Services         |
-| **Lucky**    | Frontend Engineering · HR Modules · Kanban & Form Views              |
-| **Niharika** | Frontend Engineering · Payroll Wizard · Payslip Breakdown & Analytics Dashboard |
+| Teammate | Ownership | Key Files |
+|---|---|---|
+| **Jagdeep** *(Lead)* | FastAPI ORM Models · Routers · Salary Calculation Engine | `models/` · `routers/` · `services/salary_engine.py` |
+| **Lucky** | React Frontend UI · Pages · Smart Buttons · Wizard Modal | `pages/` · `components/SmartButtons.jsx` · `components/PayrunWizardModal.jsx` |
+| **Tanya** | Payroll Guardian Engine · PDF Generation · Email Dispatcher · Seed Data | `services/guardian_validator.py` · `services/pdf_generator.py` · `seed.py` |
+| **Niharika** | Analytics Dashboard · Payslip Breakdown View · Recharts Integration | `pages/Dashboard.jsx` · `pages/PayrunProcessing.jsx` · `api/dashboard.js` |
+
+---
+
+## Data Flow
+
+```
+Employee Master  →  Contracts & Schedules  →  Attendance & Leave
+       │
+       ▼
+Payrun Wizard (2-Step: Scope → Employee Filter)
+       │
+       ▼
+Salary Rule Engine  →  Basic → Allowances → Gross → Deductions → Net
+       │
+       ▼
+Guardian Validator  →  Bank / Duplicate / Concurrent Contract Checks
+       │
+       ▼
+PDF Generation & Email Delivery  →  Live Dashboard Aggregation
+```
 
 ---
 
 ## License
 
-This project is licensed under the **MIT License**. See [LICENSE](./LICENSE) for details.
+MIT License — see [LICENSE](./LICENSE) for details.
 
 ---
 

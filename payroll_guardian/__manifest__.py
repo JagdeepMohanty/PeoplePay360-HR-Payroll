@@ -1,0 +1,25 @@
+{
+    'name': 'Payroll Guardian & Operations Platform',
+    'version': '1.0',
+    'category': 'Human Resources/Payroll',
+    'summary': 'Intelligent Workforce-to-Payroll Validation and Execution Engine',
+    'license': 'LGPL-3',
+    'depends': [
+        'base',
+        'mail',
+        'hr',
+        'hr_contract',
+        'hr_attendance',
+        'hr_holidays',
+    ],
+    'data': [
+        'security/security.xml',
+        'security/ir.model.access.csv',
+        'views/payroll_views.xml',
+        'views/guardian_views.xml',
+        'data/demo_data.xml',
+    ],
+    'installable': True,
+    'application': True,
+    'auto_install': False,
+}
