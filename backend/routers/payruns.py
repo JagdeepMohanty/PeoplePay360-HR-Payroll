@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from database import get_db
-from auth import require_payroll_read, require_payroll_write
+from auth import require_payroll_read, require_payroll_write, require_payroll_manager
 from models.user import User
 from models.contract import Contract
 from models.employee import Employee
@@ -215,4 +215,18 @@ def send_payslips(
         "message": f"Successfully dispatched {len(dispatched)} payslip PDF emails to employees.",
         "dispatched_details": dispatched,
     }
+
+
+@router.delete("/{payrun_id}", status_code=204)
+def delete_payrun(
+    payrun_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_payroll_manager),
+):
+    payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
+    if not payrun:
+        raise HTTPException(status_code=404, detail="Payrun not found")
+    db.delete(payrun)
+    db.commit()
+    return None
 

@@ -83,3 +83,17 @@ def update_contract(
     db.commit()
     db.refresh(contract)
     return contract
+
+
+@router.delete("/{contract_id}", status_code=204)
+def delete_contract(
+    contract_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_hr_manager),
+):
+    contract = db.query(Contract).filter(Contract.id == contract_id).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    db.delete(contract)
+    db.commit()
+    return None

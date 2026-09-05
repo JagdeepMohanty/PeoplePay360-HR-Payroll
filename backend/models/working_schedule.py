@@ -46,7 +46,7 @@ class WorkScheduleInterval(Base):
     __tablename__ = "working_schedule_intervals"
 
     id = Column(Integer, primary_key=True, index=True)
-    schedule_id = Column(Integer, ForeignKey("working_schedules.id"), nullable=False)
+    schedule_id = Column(Integer, ForeignKey("working_schedules.id"), nullable=False, index=True)
     day_of_week = Column(Integer, nullable=False)  # 0=Monday, 6=Sunday
     start_time = Column(String, nullable=False, default="09:00")
     end_time = Column(String, nullable=False, default="17:00")
