@@ -1,8 +1,11 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
-from database import Base, engine
+from config import settings
+from database import Base, engine, get_db
 from routers import (
     auth,
     users,
@@ -30,14 +33,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS configuration supporting credentials and allowed origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins if isinstance(settings.cors_origins, list) else ["http://localhost:5173"],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Router registration
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users (Admin)"])
 app.include_router(employees.router, prefix="/api/v1/employees", tags=["Employees"])
@@ -51,6 +57,21 @@ app.include_router(payruns.router, prefix="/payruns", tags=["Payruns (Direct)"])
 app.include_router(dashboard.router, prefix="/api/v1/reports", tags=["Dashboard"])
 
 
+@app.get("/health", tags=["Health"])
 @app.get("/api/health", tags=["Health"])
 def health_check():
-    return {"status": "ok", "service": "PeoplePay360 RBAC API"}
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+
+        return {
+            "status": "ok",
+            "service": "PeoplePay360 RBAC API",
+            "database": "connected",
+        }
+    except Exception:
+        return {
+            "status": "error",
+            "service": "PeoplePay360 RBAC API",
+            "database": "disconnected",
+        }

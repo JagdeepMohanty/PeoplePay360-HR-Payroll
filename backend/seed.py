@@ -19,16 +19,16 @@ CURRENT_YEAR = 2025
 
 
 def clear_tables(db):
-    """Delete all rows in dependency-safe order."""
+    """Delete all rows in dependency-safe foreign key order for PostgreSQL."""
     db.query(Payslip).delete()
     db.query(Payrun).delete()
+    db.query(Contract).delete()
     db.query(SalaryRule).delete()
     db.query(SalaryStructure).delete()
     db.query(LeaveRequest).delete()
     db.query(LeaveAllocation).delete()
     db.query(TimeOffType).delete()
     db.query(Attendance).delete()
-    db.query(Contract).delete()
     db.query(User).delete()
     db.query(Employee).delete()
     db.query(WorkScheduleInterval).delete()
