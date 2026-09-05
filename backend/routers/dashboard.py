@@ -2,7 +2,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from database import get_db
-from auth import require_hr_manager
+from auth import get_current_active_user
 from models.user import User
 from models.employee import Employee
 from models.contract import Contract
@@ -22,7 +22,7 @@ def get_dashboard_metrics(
     department_id: Optional[str] = Query(None, description="Department filter alias"),
     employee_type: Optional[str] = Query(None, description="Employee schedule/employment type filter"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_hr_manager),
+    current_user: User = Depends(get_current_active_user),
 ):
     target_dept = dept or department_id
 
