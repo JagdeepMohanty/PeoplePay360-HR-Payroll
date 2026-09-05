@@ -1,178 +1,106 @@
 import { useState, useEffect } from 'react'
-import { Bell, Search, CheckCircle2, XCircle, Clock } from 'lucide-react'
+import { Bell, Search, Clock, LogIn, LogOut, Sparkles } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 export default function Navbar() {
   const [time, setTime] = useState(new Date())
-  const [checkIn, setCheckIn] = useState(false)
-  const [showWidget, setShowWidget] = useState(false)
-  const [elapsed, setElapsed] = useState(0)
-  const [sessionStart, setSessionStart] = useState(null)
+  const [isCheckedIn, setIsCheckedIn] = useState(false)
+  const [sessionSeconds, setSessionSeconds] = useState(0)
 
+  // Live real-time clock
   useEffect(() => {
-    const tick = setInterval(() => setTime(new Date()), 1000)
-    return () => clearInterval(tick)
+    const timer = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(timer)
   }, [])
 
+  // Attendance work timer
   useEffect(() => {
-    if (!checkIn) { setElapsed(0); return }
-    const t = setInterval(() => setElapsed(e => e + 1), 1000)
-    return () => clearInterval(t)
-  }, [checkIn])
+    let interval = null
+    if (isCheckedIn) {
+      interval = setInterval(() => setSessionSeconds((s) => s + 1), 1000)
+    } else {
+      setSessionSeconds(0)
+    }
+    return () => clearInterval(interval)
+  }, [isCheckedIn])
 
-  const formatElapsed = (s) => {
-    const h = Math.floor(s / 3600)
-    const m = Math.floor((s % 3600) / 60)
-    const sec = s % 60
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
-  }
-
-  const handleToggle = () => {
-    if (!checkIn) setSessionStart(new Date())
-    setCheckIn(v => !v)
+  const formatTimer = (totalSeconds) => {
+    const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0')
+    const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0')
+    const s = String(totalSeconds % 60).padStart(2, '0')
+    return `${h}:${m}:${s}`
   }
 
   return (
-    <header style={{
-      height: 54,
-      background: 'var(--color-bg-surface)',
-      borderBottom: '1px solid var(--color-border)',
-      display: 'flex',
-      alignItems: 'center',
-      padding: '0 20px',
-      gap: 12,
-      position: 'relative',
-      zIndex: 20,
-    }}>
-      {/* Search bar */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        background: 'var(--color-bg-elevated)',
-        border: '1px solid var(--color-border)',
-        borderRadius: 'var(--radius-sm)',
-        padding: '5px 10px',
-        flex: '0 0 240px',
-        cursor: 'text',
-      }}>
-        <Search size={13} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-        <input
-          placeholder="Search employees, payslips…"
-          style={{
-            background: 'transparent',
-            border: 'none',
-            outline: 'none',
-            color: 'var(--color-text-primary)',
-            fontSize: '0.8125rem',
-            width: '100%',
-            fontFamily: 'var(--font-family)',
-          }}
+    <header className="h-14 border-b border-border bg-card/40 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-40 select-none">
+      {/* Search Input */}
+      <div className="relative w-80">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          type="text"
+          placeholder="Search employees, payroll, contracts..."
+          className="pl-9 bg-background/50 h-9 border-border/80 text-xs focus-visible:ring-primary/40"
         />
       </div>
 
-      <div style={{ flex: 1 }} />
+      {/* Right Controls */}
+      <div className="flex items-center gap-4">
+        {/* Live Local Clock */}
+        <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 px-3 py-1.5 rounded-md border border-border/50">
+          <Clock className="h-3.5 w-3.5 text-primary" />
+          <span className="tabular-nums font-medium">
+            {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </span>
+          <span className="text-[10px] text-muted-foreground/80">IST</span>
+        </div>
 
-      {/* Date / Time */}
-      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontVariantNumeric: 'tabular-nums', letterSpacing: '0.01em' }}>
-        {time.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
-        {' '}·{' '}
-        <span style={{ color: 'var(--color-text-secondary)' }}>
-          {time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
-        </span>
-      </div>
-
-      {/* Attendance Widget */}
-      <div style={{ position: 'relative' }}>
-        <button
-          onClick={() => setShowWidget(v => !v)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: checkIn ? 'var(--color-ready-bg)' : 'var(--color-bg-elevated)',
-            border: `1px solid ${checkIn ? 'var(--color-ready-border)' : 'var(--color-border-strong)'}`,
-            borderRadius: 'var(--radius-sm)',
-            padding: '5px 10px',
-            cursor: 'pointer',
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            color: checkIn ? 'var(--color-ready)' : 'var(--color-text-secondary)',
-            transition: 'all var(--transition-fast)',
-            fontFamily: 'var(--font-family)',
-          }}
-        >
-          <span style={{
-            width: 7, height: 7, borderRadius: '50%',
-            background: checkIn ? 'var(--color-ready)' : 'var(--color-text-muted)',
-            animation: checkIn ? 'glow-pulse 2s ease infinite' : 'none',
-          }} />
-          {checkIn ? formatElapsed(elapsed) : 'Check In'}
-          <Clock size={12} />
-        </button>
-
-        {showWidget && (
-          <div style={{
-            position: 'absolute',
-            top: 'calc(100% + 8px)',
-            right: 0,
-            background: 'var(--color-bg-surface)',
-            border: '1px solid var(--color-border-strong)',
-            borderRadius: 'var(--radius-md)',
-            boxShadow: 'var(--shadow-elevated)',
-            padding: 16,
-            width: 220,
-            zIndex: 100,
-            animation: 'fadeInUp 200ms ease both',
-          }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: 4 }}>Welcome back</div>
-            <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 12 }}>Lucky</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-              <span style={{
-                width: 8, height: 8, borderRadius: '50%',
-                background: checkIn ? 'var(--color-ready)' : 'var(--color-critical)',
-                display: 'inline-block',
-              }} />
-              <span style={{ fontSize: '0.8125rem', color: checkIn ? 'var(--color-ready)' : 'var(--color-critical)', fontWeight: 500 }}>
-                {checkIn ? 'Checked In' : 'Checked Out'}
+        {/* Quick Check-In / Check-Out Action Widget */}
+        <div className="flex items-center gap-2 bg-muted/40 p-1 rounded-lg border border-border/60">
+          {isCheckedIn && (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 text-xs text-emerald-400 font-mono">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
+              <span>{formatTimer(sessionSeconds)}</span>
             </div>
-            {checkIn && (
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-text-primary)', fontVariantNumeric: 'tabular-nums', marginBottom: 12 }}>
-                {formatElapsed(elapsed)}
-              </div>
+          )}
+
+          <Button
+            size="sm"
+            variant={isCheckedIn ? "destructive" : "default"}
+            onClick={() => setIsCheckedIn(!isCheckedIn)}
+            className="h-7 px-3 text-xs gap-1.5 font-medium transition-all"
+          >
+            {isCheckedIn ? (
+              <>
+                <LogOut className="h-3.5 w-3.5" />
+                Check Out
+              </>
+            ) : (
+              <>
+                <LogIn className="h-3.5 w-3.5" />
+                Check In
+              </>
             )}
-            <button
-              onClick={handleToggle}
-              className={`btn ${checkIn ? 'btn-danger' : 'btn-primary'} btn-primary-glow`}
-              style={{ width: '100%', justifyContent: 'center' }}
-            >
-              {checkIn ? <XCircle size={14} /> : <CheckCircle2 size={14} />}
-              {checkIn ? 'Check Out' : 'Check In'}
-            </button>
-          </div>
-        )}
-      </div>
+          </Button>
+        </div>
 
-      {/* Notifications */}
-      <button className="btn btn-icon btn-ghost" style={{ position: 'relative' }}>
-        <Bell size={16} />
-        <span style={{
-          position: 'absolute', top: 4, right: 4,
-          width: 6, height: 6, borderRadius: '50%',
-          background: 'var(--color-critical)',
-          border: '1.5px solid var(--color-bg-surface)',
-        }} />
-      </button>
+        {/* Notification Bell */}
+        <Button variant="ghost" size="icon" className="relative h-8 w-8 text-muted-foreground hover:text-foreground">
+          <Bell className="h-4 w-4" />
+          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary" />
+        </Button>
 
-      {/* User avatar */}
-      <div style={{
-        width: 30, height: 30,
-        borderRadius: '50%',
-        background: 'linear-gradient(135deg, #3B7BF8 0%, #30A46C 100%)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '0.75rem', fontWeight: 700, color: '#fff',
-        cursor: 'pointer',
-        flexShrink: 0,
-      }}>
-        L
+        {/* Profile Avatar */}
+        <Avatar className="h-8 w-8 border border-border">
+          <AvatarFallback className="bg-primary/15 text-primary text-xs font-semibold">
+            LM
+          </AvatarFallback>
+        </Avatar>
       </div>
     </header>
   )

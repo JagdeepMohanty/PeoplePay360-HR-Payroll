@@ -1,124 +1,106 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Users, FileText, Clock, Umbrella,
-  DollarSign, Settings, ChevronRight, Shield
+  DollarSign, ShieldCheck, ChevronRight, Sparkles, Building2
 } from 'lucide-react'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 
-const navSections = [
+const navGroups = [
   {
-    label: 'Main',
-    links: [
-      { to: '/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
+    title: 'Overview',
+    items: [
+      { to: '/', label: 'Dashboard', icon: LayoutDashboard },
     ],
   },
   {
-    label: 'HR',
-    links: [
-      { to: '/employees',  label: 'Employees',  icon: Users },
-      { to: '/contracts',  label: 'Contracts',  icon: FileText },
+    title: 'Human Resources',
+    items: [
+      { to: '/employees', label: 'Employees', icon: Users },
       { to: '/attendance', label: 'Attendance', icon: Clock },
-      { to: '/time-off',   label: 'Time Off',   icon: Umbrella },
+      { to: '/timeoff', label: 'Time Off', icon: Umbrella },
     ],
   },
   {
-    label: 'Payroll',
-    links: [
-      { to: '/payruns',    label: 'Pay Runs',   icon: DollarSign },
+    title: 'Payroll & Finance',
+    items: [
+      { to: '/contracts', label: 'Contracts', icon: FileText },
+      { to: '/payruns', label: 'Payruns', icon: DollarSign, badge: 'Active' },
     ],
   },
 ]
 
 export default function Sidebar() {
   return (
-    <aside style={{
-      width: 220,
-      minWidth: 220,
-      background: 'var(--color-sidebar-bg)',
-      borderRight: '1px solid var(--color-sidebar-border)',
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden',
-      zIndex: 10,
-    }}>
-      {/* Logo / Brand */}
-      <div style={{
-        padding: '18px 16px 16px',
-        borderBottom: '1px solid var(--color-sidebar-border)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-      }}>
-        <div style={{
-          width: 32, height: 32,
-          background: 'var(--color-accent)',
-          borderRadius: 8,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-        }}>
-          <Shield size={16} color="#fff" />
-        </div>
-        <div>
-          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text-primary)', letterSpacing: '-0.01em' }}>
-            PeoplePay360
+    <aside className="w-64 border-r border-border bg-sidebar flex flex-col justify-between h-screen shrink-0 select-none">
+      {/* Brand Header */}
+      <div className="p-4 border-b border-sidebar-border">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-primary/15 border border-primary/30 flex items-center justify-center text-primary font-bold shadow-sm">
+            <ShieldCheck className="h-5 w-5" />
           </div>
-          <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: 1, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-            HR &amp; Payroll
+          <div className="flex flex-col min-w-0">
+            <span className="font-semibold text-sm tracking-tight text-foreground flex items-center gap-1.5">
+              PeoplePay360
+              <Badge variant="outline" className="text-[10px] px-1 py-0 border-primary/30 text-primary">v2.4</Badge>
+            </span>
+            <span className="text-xs text-muted-foreground truncate">OXP Enterprise Suite</span>
           </div>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav style={{ flex: 1, overflowY: 'auto', padding: '12px 10px' }}>
-        {navSections.map(section => (
-          <div key={section.label} style={{ marginBottom: 20 }}>
-            <div style={{
-              fontSize: '0.625rem',
-              fontWeight: 600,
-              color: 'var(--color-text-muted)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              padding: '0 8px',
-              marginBottom: 6,
-            }}>
-              {section.label}
+      {/* Navigation Sections */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+        {navGroups.map((group) => (
+          <div key={group.title} className="space-y-1">
+            <h4 className="px-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              {group.title}
+            </h4>
+            <div className="space-y-0.5 pt-1">
+              {group.items.map(({ to, label, icon: Icon, badge }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={to === '/'}
+                  className={({ isActive }) =>
+                    `group flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                      isActive
+                        ? 'bg-primary/10 text-primary border border-primary/20 shadow-xs'
+                        : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                    }`
+                  }
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className="h-4 w-4 shrink-0 transition-transform group-hover:scale-110" />
+                    <span>{label}</span>
+                  </div>
+                  {badge && (
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30">
+                      {badge}
+                    </span>
+                  )}
+                </NavLink>
+              ))}
             </div>
-            {section.links.map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
-                style={{ marginBottom: 2 }}
-              >
-                <Icon size={15} style={{ flexShrink: 0, opacity: 0.8 }} />
-                <span style={{ flex: 1 }}>{label}</span>
-                {/* Active indicator chevron */}
-              </NavLink>
-            ))}
           </div>
         ))}
-      </nav>
+      </div>
 
-      {/* Bottom section */}
-      <div style={{
-        padding: '12px 10px',
-        borderTop: '1px solid var(--color-sidebar-border)',
-      }}>
-        <div className="sidebar-link" style={{ cursor: 'default' }}>
-          <div style={{
-            width: 28, height: 28,
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #3B7BF8 0%, #30A46C 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '0.6875rem', fontWeight: 700, color: '#fff', flexShrink: 0,
-          }}>
-            L
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              Lucky
+      {/* Bottom User / Team Card */}
+      <div className="p-3 border-t border-sidebar-border bg-card/40">
+        <div className="flex items-center justify-between p-2 rounded-lg hover:bg-sidebar-accent/60 transition-colors cursor-pointer">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Avatar className="h-8 w-8 border-border">
+              <AvatarFallback className="bg-primary/20 text-primary text-xs font-semibold">
+                LM
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium text-foreground truncate">Lucky Mohanty</span>
+              <span className="text-[11px] text-muted-foreground truncate">HR Administrator</span>
             </div>
-            <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>Payroll Admin</div>
           </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
         </div>
       </div>
     </aside>

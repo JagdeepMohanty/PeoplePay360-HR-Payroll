@@ -4,17 +4,14 @@ import Navbar from './Navbar'
 
 export default function Layout() {
   return (
-    <div style={{ display: 'flex', height: '100vh', background: 'var(--color-bg-base)', overflow: 'hidden' }}>
+    <div className="flex h-screen bg-background text-foreground overflow-hidden">
       <Sidebar />
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Navbar />
-        <main style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '24px 28px',
-          background: 'var(--color-bg-base)',
-        }}>
-          <Outlet />
+        <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-background/50">
+          <div className="max-w-7xl mx-auto space-y-6">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

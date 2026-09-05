@@ -1,208 +1,227 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import {
+  Search, Plus, LayoutGrid, List, Mail, Phone, Building2,
+  ExternalLink, UserCheck, Shield
+} from 'lucide-react'
 import { getEmployees } from '../api/employees'
-import { Search, Plus, Grid3X3, List, Users, Briefcase, Mail, Building2 } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
-/* Avatar color palette */
-const avatarColors = [
-  ['#3B7BF8', '#1a2744'],
-  ['#30A46C', '#0f2e1e'],
-  ['#F5A623', '#2e200a'],
-  ['#E5484D', '#2e0f10'],
-  ['#7C3AED', '#1e1040'],
-  ['#0EA5E9', '#0a1e2e'],
+const fallbackEmployees = [
+  { id: 1, name: 'Aarav Sharma', department: 'Engineering', job_position: 'Tech Lead', work_email: 'aarav.sharma@oxp.com', work_phone: '+91 98765 43210', status: 'Active' },
+  { id: 2, name: 'Priya Patel', department: 'HR', job_position: 'HR Manager', work_email: 'priya.patel@oxp.com', work_phone: '+91 98765 43211', status: 'Active' },
+  { id: 3, name: 'Rohan Verma', department: 'Sales', job_position: 'Account Executive', work_email: 'rohan.verma@oxp.com', work_phone: '+91 98765 43212', status: 'Active' },
+  { id: 4, name: 'Ananya Iyer', department: 'Engineering', job_position: 'Frontend Engineer', work_email: 'ananya.iyer@oxp.com', work_phone: '+91 98765 43213', status: 'Active' },
+  { id: 5, name: 'Vikram Singh', department: 'Operations', job_position: 'Operations Specialist', work_email: 'vikram.singh@oxp.com', work_phone: '+91 98765 43214', status: 'On Leave' },
+  { id: 6, name: 'Sneha Reddy', department: 'Marketing', job_position: 'Growth Lead', work_email: 'sneha.reddy@oxp.com', work_phone: '+91 98765 43215', status: 'Active' },
 ]
 
-function getInitials(name = '') {
-  return name.split(' ').slice(0,2).map(w => w[0]?.toUpperCase()).join('')
-}
-function getColor(name = '') {
-  const idx = name.charCodeAt(0) % avatarColors.length
-  return avatarColors[idx]
-}
-
-/* ── Kanban card ── */
-function EmpCard({ emp }) {
-  const [fg, bg] = getColor(emp.name)
-  return (
-    <Link to={`/employees/${emp.id}`} style={{ textDecoration: 'none' }}>
-      <div className="pp-card animate-fadeInUp" style={{
-        padding: 18, cursor: 'pointer',
-        transition: 'all var(--transition-fast)',
-        display: 'flex', flexDirection: 'column', gap: 12,
-      }}
-        onMouseEnter={e => {
-          e.currentTarget.style.borderColor = 'var(--color-border-accent)'
-          e.currentTarget.style.transform = 'translateY(-2px)'
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.borderColor = 'var(--color-border)'
-          e.currentTarget.style.transform = ''
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: '50%',
-            background: bg, border: `2px solid ${fg}40`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1rem', fontWeight: 700, color: fg, flexShrink: 0,
-          }}>
-            {getInitials(emp.name)}
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {emp.name}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{emp.job_title || 'Employee'}</div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
-            <Building2 size={11} style={{ flexShrink: 0 }} /> {emp.department || 'N/A'}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--color-text-secondary)', overflow: 'hidden' }}>
-            <Mail size={11} style={{ flexShrink: 0 }} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.email}</span>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span className="status-badge status-active">Active</span>
-          <span style={{ fontSize: '0.6875rem', color: 'var(--color-accent)', fontWeight: 500 }}>View →</span>
-        </div>
-      </div>
-    </Link>
-  )
-}
-
 export default function Employees() {
-  const [view, setView] = useState('kanban')
-  const [search, setSearch] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [deptFilter, setDeptFilter] = useState('All')
+  const [viewMode, setViewMode] = useState('grid')
 
-  const { data = [], isLoading } = useQuery({
+  const { data: apiEmployees, isLoading } = useQuery({
     queryKey: ['employees'],
-    queryFn: getEmployees,
-    retry: 1,
+    queryFn: async () => {
+      try {
+        const res = await getEmployees()
+        return res?.data?.length ? res.data : fallbackEmployees
+      } catch (err) {
+        return fallbackEmployees
+      }
+    },
+    initialData: fallbackEmployees,
   })
 
-  const filtered = data.filter(e =>
-    !search ||
-    e.name?.toLowerCase().includes(search.toLowerCase()) ||
-    e.department?.toLowerCase().includes(search.toLowerCase()) ||
-    e.email?.toLowerCase().includes(search.toLowerCase())
-  )
+  const employees = apiEmployees || fallbackEmployees
+
+  const filtered = employees.filter((emp) => {
+    const matchesSearch =
+      emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.job_position?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.work_email?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesDept = deptFilter === 'All' || emp.department === deptFilter
+    return matchesSearch && matchesDept
+  })
+
+  const departments = ['All', ...new Set(employees.map((e) => e.department).filter(Boolean))]
+
+  const getInitials = (name) => {
+    if (!name) return 'EM'
+    const parts = name.trim().split(' ')
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+    return name.slice(0, 2).toUpperCase()
+  }
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Header */}
-      <div className="page-header">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="page-title">Employees</h1>
-          <p className="page-subtitle">{data.length} total employees</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Employee Directory</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage employee master profiles, active assignments, and departments.
+          </p>
         </div>
-        <button className="btn btn-primary btn-primary-glow">
-          <Plus size={14} /> Add Employee
-        </button>
-      </div>
-
-      {/* Toolbar */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'center' }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          background: 'var(--color-bg-elevated)',
-          border: '1px solid var(--color-border)',
-          borderRadius: 'var(--radius-sm)',
-          padding: '7px 12px',
-          flex: '0 0 300px',
-        }}>
-          <Search size={13} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search employees, email, department…"
-            style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--color-text-primary)', fontSize: '0.875rem', width: '100%', fontFamily: 'var(--font-family)' }}
-          />
-        </div>
-        <select className="pp-select" style={{ width: 160 }}>
-          <option>All Departments</option>
-          <option>HR</option><option>Sales</option><option>IT</option><option>Finance</option><option>Support</option>
-        </select>
-        <div style={{ flex: 1 }} />
-        {/* View toggle */}
-        <div style={{ display: 'flex', gap: 2, background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: 2 }}>
-          {[['kanban', Grid3X3], ['list', List]].map(([v, Icon]) => (
-            <button key={v} onClick={() => setView(v)} className={`btn btn-icon btn-sm ${view === v ? 'btn-primary' : 'btn-ghost'}`} style={{ borderRadius: 3 }}>
-              <Icon size={14} />
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <Button className="gap-2 font-medium">
+            <Plus className="h-4 w-4" />
+            Add Employee
+          </Button>
         </div>
       </div>
 
-      {/* Content */}
-      {isLoading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 14 }}>
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="pp-card" style={{ padding: 18, height: 140 }}>
-              <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                <div className="skeleton" style={{ width: 44, height: 44, borderRadius: '50%' }} />
-                <div style={{ flex: 1 }}>
-                  <div className="skeleton" style={{ height: 14, marginBottom: 6, width: '70%' }} />
-                  <div className="skeleton" style={{ height: 11, width: '50%' }} />
-                </div>
-              </div>
-              <div className="skeleton" style={{ height: 11, marginBottom: 5 }} />
-              <div className="skeleton" style={{ height: 11, width: '80%' }} />
-            </div>
-          ))}
+      {/* Filter and View Controls Toolbar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card/60 p-3 rounded-xl border border-border">
+        <div className="flex items-center gap-3 w-full sm:w-auto flex-1 max-w-md">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by name, role, or email..."
+              className="pl-9 h-9 text-xs"
+            />
+          </div>
         </div>
-      ) : view === 'kanban' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 14 }}>
-          {filtered.length === 0 ? (
-            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 48, color: 'var(--color-text-muted)' }}>
-              <Users size={36} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
-              <p>No employees found</p>
-            </div>
-          ) : filtered.map((emp, i) => <EmpCard key={emp.id} emp={emp} style={{ animationDelay: `${i * 40}ms` }} />)}
+
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          {/* Dept Pills */}
+          <div className="flex items-center gap-1 overflow-x-auto py-1">
+            {departments.map((dept) => (
+              <Button
+                key={dept}
+                variant={deptFilter === dept ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setDeptFilter(dept)}
+                className={`text-xs h-8 px-3 rounded-lg ${
+                  deptFilter === dept ? 'bg-primary/15 text-primary border border-primary/20' : ''
+                }`}
+              >
+                {dept}
+              </Button>
+            ))}
+          </div>
+
+          {/* View Toggle */}
+          <div className="flex items-center bg-muted/60 p-0.5 rounded-lg border border-border shrink-0">
+            <Button
+              variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+              size="icon"
+              onClick={() => setViewMode('grid')}
+              className="h-7 w-7 rounded-md"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+              size="icon"
+              onClick={() => setViewMode('table')}
+              className="h-7 w-7 rounded-md"
+            >
+              <List className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Content Rendering */}
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((emp) => (
+            <Link key={emp.id} to={`/employees/${emp.id}`}>
+              <Card className="hover:border-primary/50 transition-all group h-full">
+                <CardContent className="p-5 flex flex-col justify-between h-full space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar className="h-12 w-12 border border-border">
+                        <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+                          {getInitials(emp.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-sm text-foreground truncate group-hover:text-primary transition-colors">
+                          {emp.name}
+                        </h3>
+                        <p className="text-xs text-muted-foreground truncate">{emp.job_position}</p>
+                      </div>
+                    </div>
+                    <Badge
+                      variant={emp.status === 'On Leave' ? 'warning' : 'success'}
+                      className="text-[10px] shrink-0"
+                    >
+                      {emp.status || 'Active'}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-1.5 pt-2 border-t border-border/50 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2 truncate">
+                      <Building2 className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
+                      <span className="truncate">{emp.department || 'General'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 truncate">
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0" />
+                      <span className="truncate">{emp.work_email}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
         </div>
       ) : (
-        <div className="pp-card" style={{ overflow: 'hidden' }}>
-          <table className="pp-table">
-            <thead>
-              <tr>
-                <th>Employee</th>
-                <th>Work Email</th>
-                <th>Job Position</th>
-                <th>Department</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(emp => {
-                const [fg, bg] = getColor(emp.name)
-                return (
-                  <tr key={emp.id}>
-                    <td className="td-primary">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 30, height: 30, borderRadius: '50%', background: bg, border: `1.5px solid ${fg}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, color: fg, flexShrink: 0 }}>
+        <Card className="p-0 overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Employee</TableHead>
+                <TableHead>Department</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead className="text-center">Status</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((emp) => (
+                <TableRow key={emp.id}>
+                  <TableCell className="font-medium text-foreground">
+                    <div className="flex items-center gap-2.5">
+                      <Avatar className="h-7 w-7">
+                        <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
                           {getInitials(emp.name)}
-                        </div>
-                        {emp.name}
-                      </div>
-                    </td>
-                    <td>{emp.email}</td>
-                    <td>{emp.job_title || '—'}</td>
-                    <td>{emp.department || '—'}</td>
-                    <td><span className="status-badge status-active">Active</span></td>
-                    <td>
-                      <Link to={`/employees/${emp.id}`} className="btn btn-ghost btn-sm">View →</Link>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{emp.name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{emp.department}</TableCell>
+                  <TableCell className="text-foreground">{emp.job_position}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs">{emp.work_email}</TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant={emp.status === 'On Leave' ? 'warning' : 'success'} className="text-[10px]">
+                      {emp.status || 'Active'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Link to={`/employees/${emp.id}`}>
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1">
+                        View Profile <ExternalLink className="h-3 w-3" />
+                      </Button>
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
       )}
     </div>
   )

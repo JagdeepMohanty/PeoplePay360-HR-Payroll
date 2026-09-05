@@ -1,148 +1,173 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Clock, CheckCircle2, XCircle, AlertTriangle, Filter } from 'lucide-react'
+import {
+  Search, Clock, CheckCircle2, AlertCircle, XCircle,
+  Calendar, Download, UserCheck
+} from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import client from '../api/client'
 
 const mockAttendance = [
-  { id: 1, employee: 'Aarav Mehta', check_in: '2026-09-05 09:02', check_out: '2026-09-05 18:05', worked_hours: 9.05, overtime: 0.05, status: 'present' },
-  { id: 2, employee: 'Maya Shah', check_in: '2026-09-05 09:45', check_out: '2026-09-05 18:00', worked_hours: 8.25, overtime: 0, status: 'late' },
-  { id: 3, employee: 'Rohan Patel', check_in: '2026-09-05 09:00', check_out: '2026-09-05 19:30', worked_hours: 10.5, overtime: 1.5, status: 'present' },
-  { id: 4, employee: 'Nisha Rao', check_in: null, check_out: null, worked_hours: 0, overtime: 0, status: 'absent' },
-  { id: 5, employee: 'Vikram Singh', check_in: '2026-09-05 08:55', check_out: '2026-09-05 17:58', worked_hours: 9.05, overtime: 0.05, status: 'present' },
-  { id: 6, employee: 'Deepa Nair', check_in: '2026-09-05 10:20', check_out: '2026-09-05 18:00', worked_hours: 7.67, overtime: 0, status: 'late' },
+  { id: 1, employee: 'Aarav Sharma', department: 'Engineering', date: '2026-09-05', check_in: '09:02 AM', check_out: '06:15 PM', worked_hours: '8h 45m', overtime: '0h 45m', status: 'Present' },
+  { id: 2, employee: 'Priya Patel', department: 'HR', date: '2026-09-05', check_in: '09:42 AM', check_out: '06:00 PM', worked_hours: '7h 48m', overtime: '-', status: 'Late' },
+  { id: 3, employee: 'Rohan Verma', department: 'Sales', date: '2026-09-05', check_in: '08:55 AM', check_out: '05:30 PM', worked_hours: '8h 35m', overtime: '-', status: 'Present' },
+  { id: 4, employee: 'Ananya Iyer', department: 'Engineering', date: '2026-09-05', check_in: '09:00 AM', check_out: '06:30 PM', worked_hours: '9h 00m', overtime: '1h 00m', status: 'Present' },
+  { id: 5, employee: 'Vikram Singh', department: 'Operations', date: '2026-09-05', check_in: '-', check_out: '-', worked_hours: '0h', overtime: '-', status: 'On Leave' },
+  { id: 6, employee: 'Sneha Reddy', department: 'Marketing', date: '2026-09-05', check_in: '10:15 AM', check_out: '07:00 PM', worked_hours: '8h 15m', overtime: '-', status: 'Late' },
+  { id: 7, employee: 'Kabir Das', department: 'Engineering', date: '2026-09-05', check_in: '-', check_out: '-', worked_hours: '0h', overtime: '-', status: 'Absent' },
 ]
 
-const statusIcon = {
-  present: <CheckCircle2 size={13} style={{ color: 'var(--color-ready)' }} />,
-  late: <AlertTriangle size={13} style={{ color: 'var(--color-warning)' }} />,
-  absent: <XCircle size={13} style={{ color: 'var(--color-critical)' }} />,
-}
-const statusBadge = { present: 'status-approved', late: 'status-to-approve', absent: 'status-inactive' }
-
-function fmtHours(h) {
-  if (!h) return '—'
-  const hr = Math.floor(h)
-  const min = Math.round((h - hr) * 60)
-  return `${hr}h ${min}m`
-}
-
 export default function Attendance() {
-  const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('all')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('All')
 
-  const { data = [], isLoading } = useQuery({
+  const { data: attendanceData } = useQuery({
     queryKey: ['attendance'],
-    queryFn: () => client.get('/attendance').then(r => r.data).catch(() => mockAttendance),
-    retry: 1,
+    queryFn: async () => {
+      try {
+        const res = await client.get('/api/v1/attendance')
+        return res?.data?.length ? res.data : mockAttendance
+      } catch {
+        return mockAttendance
+      }
+    },
+    initialData: mockAttendance,
   })
 
-  const rows = (data.length ? data : mockAttendance).filter(r => {
-    if (filter !== 'all' && r.status !== filter) return false
-    if (search && !r.employee?.toLowerCase().includes(search.toLowerCase())) return false
-    return true
+  const records = attendanceData || mockAttendance
+
+  const filtered = records.filter((rec) => {
+    const matchesSearch =
+      rec.employee?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      rec.department?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStatus = statusFilter === 'All' || rec.status === statusFilter
+    return matchesSearch && matchesStatus
   })
 
-  const counts = {
-    present: rows.filter(r => r.status === 'present').length,
-    late: rows.filter(r => r.status === 'late').length,
-    absent: rows.filter(r => r.status === 'absent').length,
+  const stats = [
+    { label: 'Present Today', count: records.filter((r) => r.status === 'Present').length, color: 'text-emerald-400' },
+    { label: 'Late Arrivals', count: records.filter((r) => r.status === 'Late').length, color: 'text-amber-400' },
+    { label: 'On Leave', count: records.filter((r) => r.status === 'On Leave').length, color: 'text-blue-400' },
+    { label: 'Absent', count: records.filter((r) => r.status === 'Absent').length, color: 'text-rose-400' },
+  ]
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'Present':
+        return <Badge variant="success" className="text-[10px]">Present</Badge>
+      case 'Late':
+        return <Badge variant="warning" className="text-[10px]">Late</Badge>
+      case 'On Leave':
+        return <Badge variant="info" className="text-[10px]">On Leave</Badge>
+      case 'Absent':
+        return <Badge variant="danger" className="text-[10px]">Absent</Badge>
+      default:
+        return <Badge variant="outline" className="text-[10px]">{status}</Badge>
+    }
   }
 
   return (
-    <div>
-      <div className="page-header">
+    <div className="space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="page-title">Attendance</h1>
-          <p className="page-subtitle">Today · {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'short', year: 'numeric' })}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Attendance & Biometrics</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Real-time biometric logs, late check-in records, and shift calculations.
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-secondary"><Filter size={13} /> Filter</button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2 text-xs">
+            <Download className="h-3.5 w-3.5" /> Export Report
+          </Button>
         </div>
       </div>
 
-      {/* Quick stat chips */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-        {[
-          { key: 'all', label: `All · ${(data.length || mockAttendance.length)}`, cls: 'chip-pending' },
-          { key: 'present', label: `Present · ${counts.present}`, cls: 'chip-ready' },
-          { key: 'late', label: `Late · ${counts.late}`, cls: 'chip-warning' },
-          { key: 'absent', label: `Absent · ${counts.absent}`, cls: 'chip-critical' },
-        ].map(({ key, label, cls }) => (
-          <button key={key} onClick={() => setFilter(key)}
-            className={`chip ${filter === key ? cls : 'chip-pending'}`}
-            style={{ cursor: 'pointer', border: filter === key ? undefined : '1px solid var(--color-border)', background: filter === key ? undefined : 'transparent', color: filter === key ? undefined : 'var(--color-text-secondary)' }}
-          >
-            {label}
-          </button>
+      {/* Summary Stat Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {stats.map((s) => (
+          <Card key={s.label}>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <span className="text-xs text-muted-foreground">{s.label}</span>
+                <div className={`text-2xl font-bold tabular-nums ${s.color}`}>
+                  {s.count}
+                </div>
+              </div>
+              <UserCheck className={`h-6 w-6 opacity-20 ${s.color}`} />
+            </CardContent>
+          </Card>
         ))}
-        <div style={{ flex: 1 }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: '5px 10px' }}>
-          <Search size={13} style={{ color: 'var(--color-text-muted)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search employee…" style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--color-text-primary)', fontSize: '0.875rem', fontFamily: 'var(--font-family)', width: 180 }} />
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card/60 p-3 rounded-xl border border-border">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Filter by employee or dept..."
+            className="pl-9 h-9 text-xs"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+          {['All', 'Present', 'Late', 'On Leave', 'Absent'].map((st) => (
+            <Button
+              key={st}
+              variant={statusFilter === st ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setStatusFilter(st)}
+              className={`text-xs h-8 px-3 rounded-lg ${
+                statusFilter === st ? 'bg-primary/15 text-primary border border-primary/20' : ''
+              }`}
+            >
+              {st}
+            </Button>
+          ))}
         </div>
       </div>
 
-      {/* Table */}
-      <div className="pp-card" style={{ overflow: 'hidden' }}>
-        <table className="pp-table">
-          <thead>
-            <tr>
-              <th>Employee</th>
-              <th>Check In</th>
-              <th>Check Out</th>
-              <th>Worked Hours</th>
-              <th>Overtime</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(row => (
-              <tr key={row.id}>
-                <td className="td-primary">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--color-accent-muted)', border: '1px solid var(--color-border-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-accent)', flexShrink: 0 }}>
-                      {row.employee?.split(' ').map(w => w[0]).join('').slice(0, 2)}
-                    </div>
-                    {row.employee}
-                  </div>
-                </td>
-                <td>
-                  {row.check_in ? (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontVariantNumeric: 'tabular-nums' }}>
-                      <Clock size={12} style={{ color: 'var(--color-text-muted)' }} />
-                      {row.check_in.split(' ')[1]}
-                    </span>
-                  ) : <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
-                </td>
-                <td>
-                  {row.check_out ? (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontVariantNumeric: 'tabular-nums' }}>
-                      <Clock size={12} style={{ color: 'var(--color-text-muted)' }} />
-                      {row.check_out.split(' ')[1]}
-                    </span>
-                  ) : <span style={{ color: 'var(--color-text-muted)' }}>—</span>}
-                </td>
-                <td style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-primary)', fontWeight: 500 }}>
-                  {fmtHours(row.worked_hours)}
-                </td>
-                <td style={{ fontVariantNumeric: 'tabular-nums', color: row.overtime > 0 ? 'var(--color-ready)' : 'var(--color-text-muted)' }}>
-                  {row.overtime > 0 ? `+${fmtHours(row.overtime)}` : '—'}
-                </td>
-                <td>
-                  <span className={`status-badge ${statusBadge[row.status]}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                    {statusIcon[row.status]}
-                    {row.status}
-                  </span>
-                </td>
-                <td>
-                  <button className="btn btn-ghost btn-sm">Details</button>
-                </td>
-              </tr>
+      {/* Attendance Table */}
+      <Card className="p-0 overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Employee</TableHead>
+              <TableHead>Department</TableHead>
+              <TableHead>Check In</TableHead>
+              <TableHead>Check Out</TableHead>
+              <TableHead>Worked Hours</TableHead>
+              <TableHead>Overtime</TableHead>
+              <TableHead className="text-right">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map((rec) => (
+              <TableRow key={rec.id}>
+                <TableCell className="font-medium text-foreground">{rec.employee}</TableCell>
+                <TableCell className="text-muted-foreground text-xs">{rec.department}</TableCell>
+                <TableCell className="text-xs font-mono">{rec.check_in}</TableCell>
+                <TableCell className="text-xs font-mono">{rec.check_out}</TableCell>
+                <TableCell className="text-xs font-mono font-medium text-foreground">
+                  {rec.worked_hours}
+                </TableCell>
+                <TableCell className="text-xs font-mono text-muted-foreground">
+                  {rec.overtime}
+                </TableCell>
+                <TableCell className="text-right">
+                  {getStatusBadge(rec.status)}
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   )
 }

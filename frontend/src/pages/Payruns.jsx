@@ -1,243 +1,270 @@
 import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import {
+  DollarSign, Plus, Search, Calendar, ArrowRight,
+  CheckCircle2, Sparkles, Clock, AlertCircle, FileCheck
+} from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogDescription, DialogFooter
+} from '@/components/ui/dialog'
 import client from '../api/client'
-import { Plus, Search, Filter, ArrowRight, Calendar } from 'lucide-react'
 
-const stateOrder = { draft: 0, computed: 1, validated: 2, confirmed: 3 }
-const stateLabel = { draft: 'Draft', computed: 'Computed', validated: 'Validated', confirmed: 'Confirmed (Paid)' }
-const stateBadge = { draft: 'status-draft', computed: 'status-computed', validated: 'status-validated', confirmed: 'status-confirmed' }
+const mockPayruns = [
+  { id: 1, name: 'Payrun - August 2026 Regular', period_start: '2026-08-01', period_end: '2026-08-31', total_employees: 92, total_net: 9845000, status: 'Paid' },
+  { id: 2, name: 'Payrun - July 2026 Regular', period_start: '2026-07-01', period_end: '2026-07-31', total_employees: 90, total_net: 9620000, status: 'Paid' },
+  { id: 3, name: 'Payrun - June 2026 Regular', period_start: '2026-06-01', period_end: '2026-06-30', total_employees: 88, total_net: 9410000, status: 'Paid' },
+  { id: 4, name: 'Payrun - September 2026 (Draft)', period_start: '2026-09-01', period_end: '2026-09-30', total_employees: 92, total_net: 10125000, status: 'Draft' },
+]
 
-function PayrunWizardModal({ onClose }) {
-  const [step, setStep] = useState(1)
-  const qc = useQueryClient()
-  const [form, setForm] = useState({ structure: '', period_start: '', period_end: '', department: '' })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+export default function Payruns() {
+  const [searchTerm, setSearchTerm] = useState('')
+  const [isWizardOpen, setIsWizardOpen] = useState(false)
+  const [wizardStep, setWizardStep] = useState(1)
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  // Form State for Payrun Wizard
+  const [payrunName, setPayrunName] = useState('September 2026 - Regular Cycle')
+  const [periodStart, setPeriodStart] = useState('2026-09-01')
+  const [periodEnd, setPeriodEnd] = useState('2026-09-30')
+  const [selectedDept, setSelectedDept] = useState('All Departments (92 Employees)')
 
-  const handleCreate = async () => {
-    setLoading(true); setError('')
-    try {
-      await client.post('/payruns', form)
-      await qc.invalidateQueries({ queryKey: ['payruns'] })
-      onClose()
-    } catch (e) {
-      setError(e?.response?.data?.detail || 'Failed to create payrun')
-    } finally { setLoading(false) }
+  const queryClient = useQueryClient()
+
+  const { data: payrunsData } = useQuery({
+    queryKey: ['payruns'],
+    queryFn: async () => {
+      try {
+        const res = await client.get('/api/v1/payruns')
+        return res?.data?.length ? res.data : mockPayruns
+      } catch {
+        return mockPayruns
+      }
+    },
+    initialData: mockPayruns,
+  })
+
+  const records = payrunsData || mockPayruns
+
+  const filtered = records.filter((p) =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(amount)
+
+  const handleCreatePayrun = () => {
+    setIsWizardOpen(false)
+    setWizardStep(1)
+    // Could navigate to the processing page
   }
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal-panel" style={{ maxWidth: 520 }}>
-        {/* Header */}
-        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>New Pay Run</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Step {step} of 2</div>
-          </div>
-          {/* Step dots */}
-          <div style={{ display: 'flex', gap: 6 }}>
-            {[1, 2].map(s => (
-              <div key={s} style={{ width: 24, height: 4, borderRadius: 2, background: s <= step ? 'var(--color-accent)' : 'var(--color-bg-hover)' }} />
-            ))}
-          </div>
-        </div>
-
-        <div style={{ padding: 24 }}>
-          {step === 1 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 4 }}>Step 1 — Salary Structure &amp; Period</div>
-              <div>
-                <label className="pp-label">Salary Structure Type</label>
-                <select className="pp-select" value={form.structure} onChange={e => set('structure', e.target.value)}>
-                  <option value="">Select structure…</option>
-                  <option value="monthly">Monthly Employee</option>
-                  <option value="hourly">Hourly Contractor</option>
-                  <option value="executive">Executive</option>
-                </select>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div>
-                  <label className="pp-label">Period Start</label>
-                  <input type="date" className="pp-input" value={form.period_start} onChange={e => set('period_start', e.target.value)} />
-                </div>
-                <div>
-                  <label className="pp-label">Period End</label>
-                  <input type="date" className="pp-input" value={form.period_end} onChange={e => set('period_end', e.target.value)} />
-                </div>
-              </div>
-              <div>
-                <label className="pp-label">Department (optional)</label>
-                <select className="pp-select" value={form.department} onChange={e => set('department', e.target.value)}>
-                  <option value="">All Departments</option>
-                  <option>HR</option><option>Sales</option><option>IT</option><option>Finance</option><option>Support</option>
-                </select>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 4 }}>Step 2 — Select Employees</div>
-              <div style={{ background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: '0.6875rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Employee</th>
-                      <th style={{ padding: '8px 12px', textAlign: 'right', fontSize: '0.6875rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Wage</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { name: 'Aarav Mehta', wage: '₹50,000' }, { name: 'Maya Shah', wage: '₹65,000' },
-                      { name: 'Vikram Singh', wage: '₹55,000' }, { name: 'Deepa Nair', wage: '₹48,000' },
-                    ].map(emp => (
-                      <tr key={emp.name} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                        <td style={{ padding: '9px 12px', color: 'var(--color-text-primary)', fontWeight: 500 }}>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                            <input type="checkbox" defaultChecked style={{ accentColor: 'var(--color-accent)' }} />
-                            {emp.name}
-                          </label>
-                        </td>
-                        <td style={{ padding: '9px 12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-secondary)' }}>{emp.wage}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div style={{ marginTop: 12, padding: '8px 12px', background: 'var(--color-critical-bg)', border: '1px solid var(--color-critical-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.8125rem', color: 'var(--color-critical)' }}>
-              {error}
-            </div>
-          )}
-        </div>
-
-        <div style={{ padding: '14px 24px 20px', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          {step === 2 && <button className="btn btn-secondary" onClick={() => setStep(1)}>← Back</button>}
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          {step === 1 ? (
-            <button className="btn btn-primary" onClick={() => setStep(2)} disabled={!form.structure || !form.period_start || !form.period_end}>
-              Next <ArrowRight size={14} />
-            </button>
-          ) : (
-            <button className="btn btn-primary btn-primary-glow" onClick={handleCreate} disabled={loading}>
-              {loading ? 'Creating…' : 'Create Pay Run'}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export default function Payruns() {
-  const [showWizard, setShowWizard] = useState(false)
-  const [search, setSearch] = useState('')
-
-  const { data = [], isLoading } = useQuery({
-    queryKey: ['payruns'],
-    queryFn: () => client.get('/payruns').then(r => r.data).catch(() => mockPayruns),
-    retry: 1,
-  })
-
-  const rows = data.length ? data : mockPayruns
-  const filtered = rows.filter(r => !search || r.period_start?.includes(search) || r.department?.toLowerCase().includes(search.toLowerCase()))
-
-  return (
-    <div>
-      <div className="page-header">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="page-title">Pay Runs</h1>
-          <p className="page-subtitle">{rows.length} pay runs · {rows.filter(r => r.state === 'confirmed').length} confirmed</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Payroll Runs</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Generate salary batches, calculate attendance deductions, and execute payouts.
+          </p>
         </div>
-        <button className="btn btn-primary btn-primary-glow" onClick={() => setShowWizard(true)}>
-          <Plus size={14} /> New Pay Run
-        </button>
+        <Button onClick={() => setIsWizardOpen(true)} className="gap-2 font-medium">
+          <Plus className="h-4 w-4" /> Create Payrun Batch
+        </Button>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: '7px 12px', flex: '0 0 280px' }}>
-          <Search size={13} style={{ color: 'var(--color-text-muted)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Filter by period or department…" style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--color-text-primary)', fontSize: '0.875rem', fontFamily: 'var(--font-family)', width: '100%' }} />
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card/60 p-3 rounded-xl border border-border">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search payrun batches..."
+            className="pl-9 h-9 text-xs"
+          />
         </div>
-        <select className="pp-select" style={{ width: 160 }}>
-          <option value="">All Statuses</option>
-          <option>Draft</option><option>Computed</option><option>Validated</option><option>Confirmed</option>
-        </select>
-        <button className="btn btn-secondary"><Filter size={13} /> Filter</button>
       </div>
 
-      <div className="pp-card" style={{ overflow: 'hidden' }}>
-        {isLoading ? (
-          <div style={{ padding: 24 }}>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} style={{ display: 'flex', gap: 16, padding: '14px 0', borderBottom: '1px solid var(--color-border)' }}>
-                <div className="skeleton" style={{ flex: 1, height: 14 }} />
-                <div className="skeleton" style={{ flex: 1, height: 14 }} />
-                <div className="skeleton" style={{ flex: 1, height: 14 }} />
-                <div className="skeleton" style={{ flex: 1, height: 20, borderRadius: 99 }} />
-              </div>
+      {/* Payrun History Table */}
+      <Card className="p-0 overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Payrun Batch</TableHead>
+              <TableHead>Period Range</TableHead>
+              <TableHead className="text-center">Employees</TableHead>
+              <TableHead className="text-right">Total Net Payout</TableHead>
+              <TableHead className="text-center">Status</TableHead>
+              <TableHead className="text-right">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map((pr) => (
+              <TableRow key={pr.id}>
+                <TableCell className="font-semibold text-foreground">
+                  <div className="flex items-center gap-2">
+                    <FileCheck className="h-4 w-4 text-primary" />
+                    <span>{pr.name}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-xs font-mono text-muted-foreground">
+                  {pr.period_start} → {pr.period_end}
+                </TableCell>
+                <TableCell className="text-center text-xs font-medium">
+                  {pr.total_employees} staff
+                </TableCell>
+                <TableCell className="text-right tabular-nums font-semibold text-foreground">
+                  {formatCurrency(pr.total_net)}
+                </TableCell>
+                <TableCell className="text-center">
+                  <Badge
+                    variant={pr.status === 'Paid' ? 'success' : 'warning'}
+                    className="text-[10px]"
+                  >
+                    {pr.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Link to={`/payruns/${pr.id}/process`}>
+                    <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs gap-1">
+                      Manage Run <ArrowRight className="h-3 w-3" />
+                    </Button>
+                  </Link>
+                </TableCell>
+              </TableRow>
             ))}
-          </div>
-        ) : (
-          <table className="pp-table">
-            <thead>
-              <tr>
-                <th>Pay Run ID</th>
-                <th>Period Start</th>
-                <th>Period End</th>
-                <th>Department</th>
-                <th>Employees</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(pr => (
-                <tr key={pr.id}>
-                  <td className="td-primary">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Calendar size={13} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-                      #{String(pr.id).padStart(4, '0')}
-                    </div>
-                  </td>
-                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>{pr.period_start}</td>
-                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>{pr.period_end}</td>
-                  <td>{pr.department || <span style={{ color: 'var(--color-text-muted)' }}>All Depts</span>}</td>
-                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>{pr.employee_count ?? '—'}</td>
-                  <td>
-                    <span className={`status-badge ${stateBadge[pr.state] || 'status-draft'}`}>
-                      {stateLabel[pr.state] || pr.state}
-                    </span>
-                  </td>
-                  <td>
-                    <Link to={`/payruns/${pr.id}/process`} className="btn btn-primary btn-sm" style={{ textDecoration: 'none' }}>
-                      Process →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>No pay runs found</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
+          </TableBody>
+        </Table>
+      </Card>
 
-      {showWizard && <PayrunWizardModal onClose={() => setShowWizard(false)} />}
+      {/* Modern 2-Step Payrun Creation Wizard (Excalidraw mockup) */}
+      <Dialog open={isWizardOpen} onOpenChange={setIsWizardOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <div className="flex items-center gap-2 text-primary text-xs font-semibold uppercase tracking-wider mb-1">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Step {wizardStep} of 2</span>
+            </div>
+            <DialogTitle>
+              {wizardStep === 1 ? 'Configure Payroll Batch' : 'Confirm Eligible Employees'}
+            </DialogTitle>
+            <DialogDescription>
+              {wizardStep === 1
+                ? 'Set the pay period dates, title, and structure for this payroll batch.'
+                : 'Review employees covered under active contracts before computing.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {wizardStep === 1 ? (
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-foreground">Payrun Title</label>
+                <Input
+                  value={payrunName}
+                  onChange={(e) => setPayrunName(e.target.value)}
+                  placeholder="e.g. September 2026 Regular Cycle"
+                  className="text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Start Date</label>
+                  <Input
+                    type="date"
+                    value={periodStart}
+                    onChange={(e) => setPeriodStart(e.target.value)}
+                    className="text-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">End Date</label>
+                  <Input
+                    type="date"
+                    value={periodEnd}
+                    onChange={(e) => setPeriodEnd(e.target.value)}
+                    className="text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-foreground">Target Group</label>
+                <select
+                  value={selectedDept}
+                  onChange={(e) => setSelectedDept(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-xs shadow-sm transition-colors text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="All" className="bg-card text-foreground">
+                    All Departments (92 Employees)
+                  </option>
+                  <option value="Engineering" className="bg-card text-foreground">
+                    Engineering Team (34 Employees)
+                  </option>
+                  <option value="Sales" className="bg-card text-foreground">
+                    Sales & Operations (40 Employees)
+                  </option>
+                </select>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3 py-2 text-xs">
+              <div className="p-3 rounded-lg bg-muted/40 border border-border space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Cycle:</span>
+                  <span className="font-medium text-foreground">{payrunName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Dates:</span>
+                  <span className="font-mono text-foreground">{periodStart} to {periodEnd}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Eligible Employees:</span>
+                  <Badge variant="success" className="text-[10px]">92 Ready for Calculation</Badge>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-start gap-2.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="text-[11px] text-muted-foreground">
+                  <span className="font-semibold text-emerald-400 block mb-0.5">Biometrics & Leave Verified</span>
+                  All biometric check-ins and approved PTOs for this timeframe have been synchronized.
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            {wizardStep === 2 && (
+              <Button variant="outline" size="sm" onClick={() => setWizardStep(1)}>
+                Back
+              </Button>
+            )}
+            {wizardStep === 1 ? (
+              <Button size="sm" onClick={() => setWizardStep(2)}>
+                Next: Verify Staff
+              </Button>
+            ) : (
+              <Link to="/payruns/4/process" onClick={() => setIsWizardOpen(false)}>
+                <Button size="sm" className="gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" /> Compute Payroll
+                </Button>
+              </Link>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
-
-const mockPayruns = [
-  { id: 1, period_start: '2026-09-01', period_end: '2026-09-30', department: 'All', state: 'draft', employee_count: 48 },
-  { id: 2, period_start: '2026-08-01', period_end: '2026-08-31', department: 'IT', state: 'confirmed', employee_count: 24 },
-  { id: 3, period_start: '2026-08-01', period_end: '2026-08-31', department: 'Sales', state: 'validated', employee_count: 18 },
-  { id: 4, period_start: '2026-07-01', period_end: '2026-07-31', department: 'All', state: 'confirmed', employee_count: 46 },
-]

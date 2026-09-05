@@ -1,448 +1,80 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/*
- * ─────────────────────────────────────────────────────────────────────────────
- * DESIGN RATIONALE — PeoplePay360 HR Payroll (OXP Pvt Ltd)
- * ─────────────────────────────────────────────────────────────────────────────
- * Enterprise fintech palette: deep navy base (#0B0E14) for authoritative
- * weight, paired with a confident blue (#3B7BF8) accent — no purple, no pink.
- * Aesthetic reference: Stripe Dashboard / Linear — subtle 1px borders + soft
- * shadows, no heavy Material Design elevation. Severity colors are muted so
- * they read as professional signals, not toy alerts.
- * All foreground/bg pairings ≥ 4.5:1 contrast (WCAG AA).
- * Tabular-nums on all money fields prevents digit jitter on live updates.
- * ─────────────────────────────────────────────────────────────────────────────
- */
+@layer base {
+  :root {
+    --background: 224 71% 4%;
+    --foreground: 210 40% 98%;
 
-:root {
-  /* ── Base palette ── */
-  --color-bg-base:         #0B0E14;
-  --color-bg-surface:      #131720;
-  --color-bg-elevated:     #1C2230;
-  --color-bg-hover:        #232B3A;
-  --color-bg-selected:     #1a2744;
-  --color-border:          rgba(255,255,255,0.07);
-  --color-border-strong:   rgba(255,255,255,0.14);
-  --color-border-accent:   rgba(59,123,248,0.40);
+    --card: 222 47% 7%;
+    --card-foreground: 210 40% 98%;
 
-  /* ── Sidebar ── */
-  --color-sidebar-bg:      #0D1117;
-  --color-sidebar-border:  rgba(255,255,255,0.06);
-  --color-sidebar-active:  rgba(59,123,248,0.15);
-  --color-sidebar-hover:   rgba(255,255,255,0.05);
+    --popover: 222 47% 7%;
+    --popover-foreground: 210 40% 98%;
 
-  /* ── Accent ── */
-  --color-accent:          #3B7BF8;
-  --color-accent-hover:    #2D6AE0;
-  --color-accent-muted:    rgba(59,123,248,0.12);
-  --color-accent-light:    rgba(59,123,248,0.20);
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
 
-  /* ── Text ── */
-  --color-text-primary:    #E8ECF4;
-  --color-text-secondary:  #8B95A8;
-  --color-text-muted:      #5A6478;
-  --color-text-inverse:    #0B0E14;
-  --color-text-accent:     #7BA7FB;
+    --secondary: 217.2 32.6% 14%;
+    --secondary-foreground: 210 40% 98%;
 
-  /* ── Severity colors ── */
-  --color-critical:        #E5484D;
-  --color-critical-bg:     rgba(229,72,77,0.10);
-  --color-critical-border: rgba(229,72,77,0.30);
+    --muted: 217.2 32.6% 12%;
+    --muted-foreground: 215 20.2% 65.1%;
 
-  --color-warning:         #F5A623;
-  --color-warning-bg:      rgba(245,166,35,0.10);
-  --color-warning-border:  rgba(245,166,35,0.30);
+    --accent: 217.2 32.6% 16%;
+    --accent-foreground: 210 40% 98%;
 
-  --color-ready:           #30A46C;
-  --color-ready-bg:        rgba(48,164,108,0.10);
-  --color-ready-border:    rgba(48,164,108,0.30);
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
 
-  --color-info:            #3B7BF8;
-  --color-info-bg:         rgba(59,123,248,0.10);
-  --color-info-border:     rgba(59,123,248,0.30);
+    --border: 217.2 32.6% 14%;
+    --input: 217.2 32.6% 14%;
+    --ring: 224.3 76.3% 48%;
 
-  --color-pending:         #8B95A8;
-  --color-pending-bg:      rgba(139,149,168,0.10);
-  --color-pending-border:  rgba(139,149,168,0.25);
+    --radius: 0.5rem;
 
-  /* ── Deduction tint ── */
-  --color-deduction:       #C4544A;
-  --color-deduction-text:  #F08080;
-
-  /* ── Typographic scale ── */
-  --font-family:           'Inter', system-ui, -apple-system, sans-serif;
-  --font-page-title:       700 1.625rem/1.2 var(--font-family);
-  --font-section:          600 1.0625rem/1.3 var(--font-family);
-  --font-card-metric:      700 2rem/1 var(--font-family);
-  --font-body:             400 0.875rem/1.6 var(--font-family);
-  --font-body-sm:          400 0.8125rem/1.5 var(--font-family);
-  --font-label:            500 0.6875rem/1 var(--font-family);
-
-  /* ── Spacing scale ── */
-  --space-1:  4px;  --space-2:  8px;  --space-3:  12px;
-  --space-4:  16px; --space-5:  20px; --space-6:  24px;
-  --space-8:  32px; --space-12: 48px;
-
-  /* ── Border radius ── */
-  --radius-xs:   3px;
-  --radius-sm:   5px;
-  --radius-md:   8px;
-  --radius-lg:   12px;
-  --radius-xl:   16px;
-  --radius-full: 9999px;
-
-  /* ── Elevation ── */
-  --shadow-card:     0 1px 3px rgba(0,0,0,0.45), 0 4px 16px rgba(0,0,0,0.28);
-  --shadow-elevated: 0 2px 8px rgba(0,0,0,0.55), 0 8px 32px rgba(0,0,0,0.38);
-  --shadow-modal:    0 4px 24px rgba(0,0,0,0.65), 0 16px 64px rgba(0,0,0,0.50);
-  --shadow-accent:   0 0 0 3px rgba(59,123,248,0.25);
-
-  /* ── Transitions ── */
-  --transition-fast:   150ms ease;
-  --transition-smooth: 300ms cubic-bezier(0.4,0,0.2,1);
-  --transition-spring: 400ms cubic-bezier(0.34,1.56,0.64,1);
-}
-
-/* ── Global base ── */
-*, *::before, *::after { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body {
-  font-family: var(--font-family);
-  font-size: 0.875rem;
-  line-height: 1.6;
-  color: var(--color-text-primary);
-  background: var(--color-bg-base);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
-
-.tabular-nums,[data-money] { font-variant-numeric: tabular-nums; font-feature-settings:"tnum"; }
-.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
-
-/* ── Cards ── */
-.pp-card { background:var(--color-bg-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); box-shadow:var(--shadow-card); }
-.pp-card-elevated { background:var(--color-bg-elevated); border:1px solid var(--color-border-strong); border-radius:var(--radius-md); box-shadow:var(--shadow-elevated); }
-
-/* ── Chips ── */
-.chip { display:inline-flex; align-items:center; gap:var(--space-1); padding:2px 7px; border-radius:var(--radius-sm); font:var(--font-label); text-transform:uppercase; letter-spacing:0.06em; font-weight:600; line-height:1.5; }
-.chip-critical { background:var(--color-critical-bg); color:var(--color-critical); border:1px solid var(--color-critical-border); }
-.chip-warning  { background:var(--color-warning-bg);  color:var(--color-warning);  border:1px solid var(--color-warning-border); }
-.chip-info     { background:var(--color-info-bg);     color:var(--color-info);     border:1px solid var(--color-info-border);    }
-.chip-ready    { background:var(--color-ready-bg);    color:var(--color-ready);    border:1px solid var(--color-ready-border);   }
-.chip-pending  { background:var(--color-pending-bg);  color:var(--color-pending);  border:1px solid var(--color-pending-border); }
-
-/* ── Status badges (pill with dot) ── */
-.status-badge { display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:var(--radius-full); font-size:0.6875rem; font-weight:600; letter-spacing:0.04em; text-transform:capitalize; }
-.status-badge::before { content:''; width:5px; height:5px; border-radius:50%; background:currentColor; flex-shrink:0; }
-.status-active,.status-running,.status-confirmed,.status-approved,.status-paid { background:var(--color-ready-bg); color:var(--color-ready); border:1px solid var(--color-ready-border); }
-.status-inactive,.status-expired,.status-refused { background:var(--color-critical-bg); color:var(--color-critical); border:1px solid var(--color-critical-border); }
-.status-draft,.status-pending { background:var(--color-pending-bg); color:var(--color-pending); border:1px solid var(--color-pending-border); }
-.status-computed,.status-validated { background:var(--color-info-bg); color:var(--color-info); border:1px solid var(--color-info-border); }
-.status-approve,.status-to-approve { background:var(--color-warning-bg); color:var(--color-warning); border:1px solid var(--color-warning-border); }
-
-/* ── Buttons ── */
-.btn { display:inline-flex; align-items:center; justify-content:center; gap:var(--space-2); padding:7px 14px; border-radius:var(--radius-sm); font-family:var(--font-family); font-size:0.8125rem; font-weight:500; line-height:1; border:1px solid transparent; cursor:pointer; transition:all var(--transition-fast); white-space:nowrap; outline:none; }
-.btn:focus-visible { box-shadow:var(--shadow-accent); }
-.btn:disabled { opacity:0.45; cursor:not-allowed; }
-.btn-primary { background:var(--color-accent); color:#fff; border-color:var(--color-accent); }
-.btn-primary:hover:not(:disabled) { background:var(--color-accent-hover); }
-.btn-secondary { background:var(--color-bg-elevated); color:var(--color-text-primary); border-color:var(--color-border-strong); }
-.btn-secondary:hover:not(:disabled) { background:var(--color-bg-hover); border-color:var(--color-border-accent); }
-.btn-ghost { background:transparent; color:var(--color-text-secondary); border-color:transparent; }
-.btn-ghost:hover:not(:disabled) { background:var(--color-bg-hover); color:var(--color-text-primary); }
-.btn-danger { background:var(--color-critical-bg); color:var(--color-critical); border-color:var(--color-critical-border); }
-.btn-danger:hover:not(:disabled) { background:var(--color-critical); color:#fff; }
-.btn-sm { padding:5px 10px; font-size:0.75rem; }
-.btn-lg { padding:10px 20px; font-size:0.9375rem; font-weight:600; }
-.btn-icon { padding:7px; }
-
-/* ── Forms ── */
-.pp-input,.pp-select { width:100%; padding:8px 12px; background:var(--color-bg-elevated); border:1px solid var(--color-border-strong); border-radius:var(--radius-sm); color:var(--color-text-primary); font-family:var(--font-family); font-size:0.875rem; line-height:1.5; transition:border-color var(--transition-fast),box-shadow var(--transition-fast); outline:none; }
-.pp-input::placeholder { color:var(--color-text-muted); }
-.pp-input:focus,.pp-select:focus { border-color:var(--color-accent); box-shadow:var(--shadow-accent); }
-.pp-select { appearance:none; cursor:pointer; }
-.pp-label { display:block; font-size:0.75rem; font-weight:500; color:var(--color-text-secondary); margin-bottom:5px; letter-spacing:0.02em; }
-
-/* ── Tables ── */
-.pp-table { width:100%; border-collapse:collapse; font-size:0.875rem; }
-.pp-table thead tr { border-bottom:1px solid var(--color-border-strong); }
-.pp-table thead th { padding:10px 16px; text-align:left; font-size:0.6875rem; font-weight:600; color:var(--color-text-muted); text-transform:uppercase; letter-spacing:0.07em; white-space:nowrap; }
-.pp-table tbody tr { border-bottom:1px solid var(--color-border); transition:background var(--transition-fast); }
-.pp-table tbody tr:last-child { border-bottom:none; }
-.pp-table tbody tr:hover { background:var(--color-bg-hover); }
-.pp-table tbody td { padding:12px 16px; color:var(--color-text-secondary); vertical-align:middle; }
-.pp-table tbody td.td-primary { color:var(--color-text-primary); font-weight:500; }
-
-/* ── Severity bars ── */
-.severity-bar-critical { border-left:4px solid var(--color-critical); }
-.severity-bar-warning  { border-left:4px solid var(--color-warning); }
-.severity-bar-info     { border-left:4px solid var(--color-info); }
-.severity-bar-ready    { border-left:4px solid var(--color-ready); }
-
-/* ── Payslip card ── */
-.ps-card { background:var(--color-bg-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); box-shadow:var(--shadow-card); }
-
-/* ── Animations ── */
-@keyframes glow-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(59,123,248,0)} 50%{box-shadow:0 0 0 8px rgba(59,123,248,0.16)} }
-.btn-primary-glow { animation:glow-pulse 3s ease infinite; }
-
-@keyframes progress-sweep { from{transform:translateX(-100%)} to{transform:translateX(100%)} }
-.processing-bar { position:relative; overflow:hidden; }
-.processing-bar::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--color-accent),transparent); animation:progress-sweep 1.2s ease infinite; }
-
-@keyframes card-resolve { from{opacity:1;transform:translateY(0);max-height:300px;margin-bottom:12px} to{opacity:0;transform:translateY(-6px);max-height:0;margin:0;padding:0;border:0} }
-.card-resolving { animation:card-resolve var(--transition-smooth) forwards; overflow:hidden; }
-
-@keyframes fadeInUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-.animate-fadeInUp { animation:fadeInUp var(--transition-smooth) both; }
-
-@keyframes slideInRight { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
-.animate-slideInRight { animation:slideInRight var(--transition-smooth) both; }
-
-.delay-75  { animation-delay:75ms; }
-.delay-150 { animation-delay:150ms; }
-.delay-225 { animation-delay:225ms; }
-.delay-300 { animation-delay:300ms; }
-.delay-375 { animation-delay:375ms; }
-
-.ring-progress { transition:stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1); }
-
-@keyframes skeleton-shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
-.skeleton { background:linear-gradient(90deg,var(--color-bg-elevated) 25%,var(--color-bg-hover) 50%,var(--color-bg-elevated) 75%); background-size:800px 100%; animation:skeleton-shimmer 1.6s ease infinite; border-radius:var(--radius-sm); }
-
-/* ── Sidebar links ── */
-.sidebar-link { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:var(--radius-sm); font-size:0.8125rem; font-weight:500; color:var(--color-text-secondary); transition:all var(--transition-fast); text-decoration:none; cursor:pointer; border:1px solid transparent; }
-.sidebar-link:hover { background:var(--color-sidebar-hover); color:var(--color-text-primary); }
-.sidebar-link.active { background:var(--color-sidebar-active); color:var(--color-accent); border-color:var(--color-border-accent); }
-
-/* ── Page header ── */
-.page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:var(--space-6); padding-bottom:var(--space-5); border-bottom:1px solid var(--color-border); }
-.page-title { font-size:1.375rem; font-weight:700; color:var(--color-text-primary); letter-spacing:-0.01em; }
-.page-subtitle { font-size:0.8125rem; color:var(--color-text-muted); margin-top:2px; }
-
-/* ── Employee avatar ── */
-.emp-avatar { width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1rem; font-weight:700; flex-shrink:0; }
-
-/* ── Modal ── */
-.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); z-index:50; display:flex; align-items:center; justify-content:center; padding:var(--space-4); }
-.modal-panel { background:var(--color-bg-surface); border:1px solid var(--color-border-strong); border-radius:var(--radius-lg); box-shadow:var(--shadow-modal); width:100%; animation:fadeInUp 250ms ease both; }
-
-/* ── Stepper ── */
-.stepper { display:flex; align-items:center; }
-.step-item { display:flex; align-items:center; gap:var(--space-2); padding:6px 14px 6px 10px; font-size:0.75rem; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; }
-.step-item.done   { color:var(--color-ready); }
-.step-item.active { color:var(--color-accent); }
-.step-item.idle   { color:var(--color-text-muted); }
-
-a { color:inherit; text-decoration:none; }
-button { font-family:var(--font-family); }
-
-/* ── Print ── */
-@media print {
-  body { background:#fff; color:#000; }
-  .no-print { display:none !important; }
-  .ps-card { box-shadow:none; border:1px solid #ccc; background:#fff; }
-}
-
-
-/*
- * ─────────────────────────────────────────────────────────────────────────────
- * DESIGN RATIONALE — PeoplePay360 Payslip UI (Lucky's Scope)
- * ─────────────────────────────────────────────────────────────────────────────
- * This is an enterprise payroll compliance tool, not a consumer app.
- * The palette is a cool dark navy (#0B0E14) for authoritative weight, paired
- * with a single confident blue (#3B7BF8) accent — no purple, no pink.
- * Severity colors are muted (not default Bootstrap red/yellow/green) so they
- * read as "professional signal" rather than "toy alert." All foreground/bg
- * pairings target ≥ 4.5:1 contrast (WCAG AA). Typography leans on Inter for
- * precision; tabular-nums prevents digit jitter in live-updating money fields.
- * The aesthetic reference is Stripe Dashboard / Linear — subtle borders +
- * soft shadows, not heavy Material Design cards.
- * ─────────────────────────────────────────────────────────────────────────────
- */
-
-
-:root {
-  /* ── Base palette ── */
-  --color-bg-base:        #0B0E14;
-  --color-bg-surface:     #131720;
-  --color-bg-elevated:    #1C2230;
-  --color-bg-hover:       #232B3A;
-  --color-border:         rgba(255,255,255,0.08);
-  --color-border-strong:  rgba(255,255,255,0.15);
-
-  /* ── Accent ── */
-  --color-accent:         #3B7BF8;
-  --color-accent-hover:   #2D6AE0;
-  --color-accent-muted:   rgba(59,123,248,0.12);
-
-  /* ── Text ── */
-  --color-text-primary:   #E8ECF4;
-  --color-text-secondary: #8B95A8;
-  --color-text-muted:     #5A6478;
-  --color-text-inverse:   #0B0E14;
-
-  /* ── Severity colors (all pass 4.5:1 on --color-bg-surface) ── */
-  --color-critical:       #E5484D;   /* muted red   */
-  --color-critical-bg:    rgba(229,72,77,0.10);
-  --color-critical-border:rgba(229,72,77,0.30);
-
-  --color-warning:        #F5A623;   /* amber       */
-  --color-warning-bg:     rgba(245,166,35,0.10);
-  --color-warning-border: rgba(245,166,35,0.30);
-
-  --color-ready:          #30A46C;   /* calm green  */
-  --color-ready-bg:       rgba(48,164,108,0.10);
-  --color-ready-border:   rgba(48,164,108,0.30);
-
-  --color-info:           #3B7BF8;
-  --color-info-bg:        rgba(59,123,248,0.10);
-  --color-info-border:    rgba(59,123,248,0.30);
-
-  /* ── Deduction tint (not alarm-red — deductions are normal) ── */
-  --color-deduction:      #C4544A;
-  --color-deduction-text: #F08080;
-
-  /* ── Typographic scale ── */
-  --font-family:          'Inter', system-ui, -apple-system, sans-serif;
-  --font-page-title:      700 1.75rem/1.2 var(--font-family);
-  --font-section:         600 1.125rem/1.3 var(--font-family);
-  --font-card-metric:     700 2rem/1 var(--font-family);
-  --font-body:            400 0.875rem/1.6 var(--font-family);
-  --font-label:           500 0.6875rem/1 var(--font-family);   /* uppercase micro-labels */
-
-  /* ── Spacing scale ── */
-  --space-1:  4px;
-  --space-2:  8px;
-  --space-3:  12px;
-  --space-4:  16px;
-  --space-6:  24px;
-  --space-8:  32px;
-  --space-12: 48px;
-
-  /* ── Border radius scale ── */
-  --radius-sm:   4px;    /* badges, chips */
-  --radius-md:   8px;    /* cards */
-  --radius-lg:   12px;   /* modals, large panels */
-  --radius-none: 0;      /* tables */
-
-  /* ── Elevation: 1px border + soft shadow (Stripe/Linear style) ── */
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.25);
-  --shadow-elevated: 0 2px 8px rgba(0,0,0,0.5), 0 8px 32px rgba(0,0,0,0.35);
-
-  /* ── Transitions (shared across all animated elements) ── */
-  --transition-fast:   150ms ease;
-  --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-spring: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-/* ── Global base ── */
-*, *::before, *::after { box-sizing: border-box; }
-
-body {
-  font: var(--font-body);
-  font-family: var(--font-family);
-  color: var(--color-text-primary);
-  background: var(--color-bg-base);
-  -webkit-font-smoothing: antialiased;
-}
-
-/* ── Tabular numerals for all money values ── */
-.tabular-nums,
-[data-money] {
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum";
-}
-
-/* ── Visually hidden (accessible screen-reader text) ── */
-.sr-only {
-  position: absolute;
-  width: 1px; height: 1px;
-  padding: 0; margin: -1px;
-  overflow: hidden;
-  clip: rect(0,0,0,0);
-  white-space: nowrap;
-  border: 0;
-}
-
-/* ── Payslip component namespace ── */
-.ps-card {
-  background: var(--color-bg-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-}
-
-/* ── Severity bar left-edge (ExceptionCard) ── */
-.severity-bar-critical { border-left: 5px solid var(--color-critical); }
-.severity-bar-warning  { border-left: 5px solid var(--color-warning);  }
-.severity-bar-info     { border-left: 5px solid var(--color-info);     }
-.severity-bar-ready    { border-left: 5px solid var(--color-ready);    }
-
-/* ── Chip/badge micro-labels ── */
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  font: var(--font-label);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.chip-critical { background: var(--color-critical-bg); color: var(--color-critical); border: 1px solid var(--color-critical-border); }
-.chip-warning  { background: var(--color-warning-bg);  color: var(--color-warning);  border: 1px solid var(--color-warning-border);  }
-.chip-info     { background: var(--color-info-bg);     color: var(--color-info);     border: 1px solid var(--color-info-border);     }
-.chip-ready    { background: var(--color-ready-bg);    color: var(--color-ready);    border: 1px solid var(--color-ready-border);    }
-
-/* ── Animated top-edge progress bar ── */
-@keyframes progress-sweep {
-  from { transform: translateX(-100%); }
-  to   { transform: translateX(100%); }
-}
-.processing-bar::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
-  animation: progress-sweep 1.2s ease infinite;
-}
-
-/* ── Accent glow pulse (for primary CTA buttons) ── */
-@keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(59,123,248,0); }
-  50%       { box-shadow: 0 0 0 6px rgba(59,123,248,0.18); }
-}
-.btn-primary-glow {
-  animation: glow-pulse 3s ease infinite;
-}
-
-/* ── Card collapse/fade (ExceptionCard resolved state) ── */
-@keyframes card-resolve {
-  from { opacity: 1; transform: translateY(0); max-height: 200px; }
-  to   { opacity: 0; transform: translateY(-8px); max-height: 0; margin: 0; padding: 0; }
-}
-.card-resolving {
-  animation: card-resolve var(--transition-smooth) forwards;
-  overflow: hidden;
-}
-
-/* ── Print overrides for PayslipReport ── */
-@media print {
-  body { background: #fff; color: #000; }
-  .no-print { display: none !important; }
-  .ps-card {
-    box-shadow: none;
-    border: 1px solid #ccc;
-    background: #fff;
+    --sidebar-background: 224 71% 3.5%;
+    --sidebar-foreground: 215 20.2% 75%;
+    --sidebar-primary: 217.2 91.2% 59.8%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217.2 32.6% 12%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 10%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
   }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1, "tnum" 1;
+    overflow-x: hidden;
+  }
+}
+
+/* Custom scrollbar for sleek modern SaaS look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }

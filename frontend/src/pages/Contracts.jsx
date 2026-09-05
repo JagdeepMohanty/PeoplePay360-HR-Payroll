@@ -1,129 +1,146 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Plus, Search, FileText, Calendar, DollarSign } from 'lucide-react'
+import {
+  FileText, Plus, Search, Calendar, DollarSign,
+  ExternalLink, CheckCircle2, Shield
+} from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import client from '../api/client'
 
-const statusClass = {
-  running: 'status-running', confirmed: 'status-confirmed',
-  draft: 'status-draft', expired: 'status-expired',
-}
+const mockContracts = [
+  { id: 1, contract_ref: 'CNT-2023-001', employee: 'Aarav Sharma', department: 'Engineering', job_position: 'Tech Lead', start_date: '2023-01-12', end_date: 'Open-ended', wage: 175000, structure: 'Regular Tech Band 4', status: 'Active' },
+  { id: 2, contract_ref: 'CNT-2023-014', employee: 'Priya Patel', department: 'HR', job_position: 'HR Manager', start_date: '2023-04-01', end_date: 'Open-ended', wage: 125000, structure: 'Executive HR Band 3', status: 'Active' },
+  { id: 3, contract_ref: 'CNT-2024-008', employee: 'Rohan Verma', department: 'Sales', job_position: 'Account Executive', start_date: '2024-02-15', end_date: 'Open-ended', wage: 95000, structure: 'Sales Base + Incentive', status: 'Active' },
+  { id: 4, contract_ref: 'CNT-2024-022', employee: 'Ananya Iyer', department: 'Engineering', job_position: 'Frontend Engineer', start_date: '2024-06-01', end_date: 'Open-ended', wage: 110000, structure: 'Regular Tech Band 2', status: 'Active' },
+  { id: 5, contract_ref: 'CNT-2025-003', employee: 'Vikram Singh', department: 'Operations', job_position: 'Operations Specialist', start_date: '2025-01-10', end_date: '2026-12-31', wage: 85000, structure: 'Operations Band 2', status: 'Active' },
+  { id: 6, contract_ref: 'CNT-2025-019', employee: 'Sneha Reddy', department: 'Marketing', job_position: 'Growth Lead', start_date: '2025-03-01', end_date: 'Open-ended', wage: 120000, structure: 'Marketing Band 3', status: 'Active' },
+  { id: 7, contract_ref: 'CNT-2022-045', employee: 'Rajesh Kumar', department: 'Engineering', job_position: 'DevOps Architect', start_date: '2022-08-01', end_date: '2026-07-31', wage: 190000, structure: 'Regular Tech Band 5', status: 'Expired' },
+]
 
 export default function Contracts() {
-  const [search, setSearch] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('All')
 
-  const { data = [], isLoading } = useQuery({
+  const { data: contractsData } = useQuery({
     queryKey: ['contracts'],
-    queryFn: () => client.get('/contracts').then(r => r.data).catch(() => mockContracts),
-    retry: 1,
+    queryFn: async () => {
+      try {
+        const res = await client.get('/api/v1/contracts')
+        return res?.data?.length ? res.data : mockContracts
+      } catch {
+        return mockContracts
+      }
+    },
+    initialData: mockContracts,
   })
 
-  const filtered = data.filter(c =>
-    !search || c.employee_name?.toLowerCase().includes(search.toLowerCase()) ||
-    c.name?.toLowerCase().includes(search.toLowerCase())
-  )
+  const records = contractsData || mockContracts
+
+  const filtered = records.filter((c) => {
+    const matchesSearch =
+      c.employee?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.contract_ref?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.department?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesStatus = statusFilter === 'All' || c.status === statusFilter
+    return matchesSearch && matchesStatus
+  })
+
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(amount)
 
   return (
-    <div>
-      <div className="page-header">
+    <div className="space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="page-title">Contracts</h1>
-          <p className="page-subtitle">{data.length} contracts · {data.filter(c => c.state === 'running').length} running</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Employee Contracts</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Maintain salary structures, wage rates, employment validity, and PF/ESI compliance.
+          </p>
         </div>
-        <button className="btn btn-primary">
-          <Plus size={14} /> New Contract
-        </button>
+        <Button className="gap-2 font-medium">
+          <Plus className="h-4 w-4" /> New Contract
+        </Button>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: '7px 12px', flex: '0 0 300px' }}>
-          <Search size={13} style={{ color: 'var(--color-text-muted)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search contracts or employees…" style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--color-text-primary)', fontSize: '0.875rem', width: '100%', fontFamily: 'var(--font-family)' }} />
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card/60 p-3 rounded-xl border border-border">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by ref, employee, or department..."
+            className="pl-9 h-9 text-xs"
+          />
         </div>
-        <select className="pp-select" style={{ width: 160 }}>
-          <option value="">All Statuses</option>
-          <option>Running</option><option>Draft</option><option>Expired</option>
-        </select>
+
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+          {['All', 'Active', 'Expired'].map((st) => (
+            <Button
+              key={st}
+              variant={statusFilter === st ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setStatusFilter(st)}
+              className={`text-xs h-8 px-3 rounded-lg ${
+                statusFilter === st ? 'bg-primary/15 text-primary border border-primary/20' : ''
+              }`}
+            >
+              {st}
+            </Button>
+          ))}
+        </div>
       </div>
 
-      <div className="pp-card" style={{ overflow: 'hidden' }}>
-        {isLoading ? (
-          <div style={{ padding: 20 }}>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} style={{ display: 'flex', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--color-border)' }}>
-                <div className="skeleton" style={{ flex: 2, height: 14 }} />
-                <div className="skeleton" style={{ flex: 2, height: 14 }} />
-                <div className="skeleton" style={{ flex: 1, height: 14 }} />
-                <div className="skeleton" style={{ flex: 1, height: 14 }} />
-                <div className="skeleton" style={{ flex: 1, height: 20, borderRadius: 99 }} />
-              </div>
+      {/* Contracts Table */}
+      <Card className="p-0 overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Contract Ref</TableHead>
+              <TableHead>Employee</TableHead>
+              <TableHead>Salary Structure</TableHead>
+              <TableHead>Start Date</TableHead>
+              <TableHead>End Date</TableHead>
+              <TableHead className="text-right">Monthly Base Wage</TableHead>
+              <TableHead className="text-center">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map((c) => (
+              <TableRow key={c.id}>
+                <TableCell className="font-mono text-xs text-primary font-medium">
+                  {c.contract_ref}
+                </TableCell>
+                <TableCell className="font-medium text-foreground">
+                  <div>{c.employee}</div>
+                  <span className="text-[11px] text-muted-foreground">{c.job_position} · {c.department}</span>
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">{c.structure}</TableCell>
+                <TableCell className="text-xs font-mono">{c.start_date}</TableCell>
+                <TableCell className="text-xs font-mono">{c.end_date}</TableCell>
+                <TableCell className="text-right tabular-nums font-semibold text-foreground">
+                  {formatCurrency(c.wage)}
+                </TableCell>
+                <TableCell className="text-center">
+                  <Badge variant={c.status === 'Active' ? 'success' : 'danger'} className="text-[10px]">
+                    {c.status}
+                  </Badge>
+                </TableCell>
+              </TableRow>
             ))}
-          </div>
-        ) : (
-          <table className="pp-table">
-            <thead>
-              <tr>
-                <th>Contract Ref</th>
-                <th>Employee</th>
-                <th>Start Date</th>
-                <th>End Date</th>
-                <th style={{ textAlign: 'right' }}>Wage / Month</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(c => (
-                <tr key={c.id}>
-                  <td className="td-primary">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                      <FileText size={13} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-                      {c.name || `CON/${c.id}`}
-                    </div>
-                  </td>
-                  <td className="td-primary">{c.employee_name}</td>
-                  <td>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <Calendar size={12} style={{ color: 'var(--color-text-muted)' }} />
-                      {c.date_start || '—'}
-                    </span>
-                  </td>
-                  <td>{c.date_end || <span style={{ color: 'var(--color-text-muted)' }}>Ongoing</span>}</td>
-                  <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--color-text-primary)', fontWeight: 500 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end' }}>
-                      <DollarSign size={12} style={{ color: 'var(--color-text-muted)' }} />
-                      ₹{Number(c.wage || 0).toLocaleString('en-IN')}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`status-badge ${statusClass[c.state] || 'status-draft'}`}>
-                      {c.state || 'draft'}
-                    </span>
-                  </td>
-                  <td>
-                    <button className="btn btn-ghost btn-sm">View →</button>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>
-                    No contracts found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
+          </TableBody>
+        </Table>
+      </Card>
     </div>
   )
 }
-
-const mockContracts = [
-  { id: 1, name: 'CON/2026/0042', employee_name: 'Aarav Mehta', date_start: '01 Jan 2024', date_end: null, wage: 50000, state: 'running' },
-  { id: 2, name: 'CON/2026/0031', employee_name: 'Maya Shah', date_start: '01 Mar 2024', date_end: null, wage: 65000, state: 'running' },
-  { id: 3, name: 'CON/2026/0019', employee_name: 'Rohan Patel', date_start: '15 Jul 2023', date_end: '14 Jul 2026', wage: 42000, state: 'expired' },
-  { id: 4, name: 'CON/2026/0055', employee_name: 'Nisha Rao', date_start: '01 Sep 2026', date_end: null, wage: 78000, state: 'draft' },
-  { id: 5, name: 'CON/2026/0047', employee_name: 'Vikram Singh', date_start: '01 Jun 2024', date_end: null, wage: 55000, state: 'running' },
-]
