@@ -53,10 +53,20 @@ def client(db_session):
         finally:
             pass
     app.dependency_overrides[get_db] = override_get_db
+    # Override authentication for tests
+    from backend.auth.dependencies import get_current_user
+    def override_get_current_user():
+        class DummyUser:
+            id = 1
+            role = "HR_OFFICER"
+            is_active = True
+        return DummyUser()
+    app.dependency_overrides[get_current_user] = override_get_current_user
     with TestClient(app) as c:
         yield c
-    # Clean up the override after the test.
+    # Clean up the overrides after the test.
     app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_current_user, None)
 
 # ---------------------------------------------------------------------------
 # Helper data fixtures – simple objects that can be used in tests.
