@@ -8,6 +8,9 @@ import Attendance from './pages/Attendance'
 import TimeOff from './pages/TimeOff'
 import Payruns from './pages/Payruns'
 import PayrunProcessing from './pages/PayrunProcessing'
+import PayslipReport from './pages/PayslipReport'
+import SalaryStructures from './pages/SalaryStructures'
+import WorkSchedules from './pages/WorkSchedules'
 
 export default function App() {
   return (
@@ -20,8 +23,12 @@ export default function App() {
         <Route path="contracts" element={<Contracts />} />
         <Route path="attendance" element={<Attendance />} />
         <Route path="time-off" element={<TimeOff />} />
+        <Route path="timeoff" element={<Navigate to="/time-off" replace />} />
+        <Route path="schedules" element={<WorkSchedules />} />
+        <Route path="structures" element={<SalaryStructures />} />
         <Route path="payruns" element={<Payruns />} />
         <Route path="payruns/:id/process" element={<PayrunProcessing />} />
+        <Route path="payruns/:id/report" element={<PayslipReport />} />
       </Route>
     </Routes>
   )

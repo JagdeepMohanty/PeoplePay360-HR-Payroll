@@ -19,6 +19,16 @@ def list_payruns(db: Session = Depends(get_db)):
 
 
 # Declared before /{payrun_id} routes to avoid wildcard collision
+
+# Added by Lucky — list computed payslips for a payrun (required by PayslipBreakdown + PayslipReport)
+@router.get("/{payrun_id}/payslips", response_model=list[PayslipRead])
+def list_payslips(payrun_id: int, db: Session = Depends(get_db)):
+    payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
+    if not payrun:
+        raise HTTPException(status_code=404, detail="Payrun not found")
+    return db.query(Payslip).filter(Payslip.payrun_id == payrun_id).all()
+
+
 @router.get("/payslips/{payslip_id}/pdf")
 def download_payslip_pdf(payslip_id: int, db: Session = Depends(get_db)):
     slip = db.query(Payslip).filter(Payslip.id == payslip_id).first()
