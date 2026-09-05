@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Calculator, ShieldCheck, CheckCircle2, Send, Eye, FileText, ArrowLeft, AlertCircle } from 'lucide-react'
+import { Calculator, ShieldCheck, CheckCircle2, Send, Eye, FileText, ArrowLeft, AlertCircle, Sparkles } from 'lucide-react'
 import { fetchPayrunDetail, fetchPayrollWarnings, dispatchPayslipEmail, generatePayslipPdf } from '../api/payrollAdapter'
 import PayrollStatusBadge from '../components/payroll/common/PayrollStatusBadge'
 import PayrollWarningBanner from '../components/payroll/warnings/PayrollWarningBanner'

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 12px;
+      color: #1a1a2e;
+      padding: 40px;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 3px solid #1d4ed8;
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+    }
+    .company-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1d4ed8;
+      letter-spacing: 0.5px;
+    }
+    .company-sub {
+      font-size: 10px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+    .payslip-title {
+      text-align: right;
+    }
+    .payslip-title h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #111827;
+    }
+    .payslip-title p {
+      font-size: 10px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+
+    /* ── Employee Info ───────────────────────────────────────── */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 32px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: #6b7280; font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .info-value { font-weight: 600; font-size: 11px; }
+
+    /* ── Breakdown Table ─────────────────────────────────────── */
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #374151;
+      margin-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 24px;
+    }
+    thead tr {
+      background: #1d4ed8;
+      color: #ffffff;
+    }
+    thead th {
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    thead th:last-child { text-align: right; }
+    tbody tr:nth-child(even) { background: #f1f5f9; }
+    tbody tr:hover { background: #e0f2fe; }
+    tbody td {
+      padding: 7px 12px;
+      font-size: 11px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    tbody td:last-child { text-align: right; font-weight: 500; }
+
+    .row-deduction td { color: #dc2626; }
+    .row-gross td     { font-weight: 700; background: #eff6ff !important; }
+    .row-net td       { font-weight: 700; background: #f0fdf4 !important; color: #15803d; font-size: 13px; }
+
+    /* ── Summary Box ─────────────────────────────────────────── */
+    .summary {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 32px;
+    }
+    .summary-box {
+      border: 2px solid #1d4ed8;
+      border-radius: 8px;
+      padding: 14px 24px;
+      min-width: 240px;
+      text-align: right;
+    }
+    .summary-box .label { font-size: 10px; color: #6b7280; text-transform: uppercase; }
+    .summary-box .amount {
+      font-size: 26px;
+      font-weight: 800;
+      color: #1d4ed8;
+      margin-top: 2px;
+    }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    .footer {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: #9ca3af;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Company Header ── -->
+  <div class="header">
+    <div>
+      <div class="company-name">PeoplePay360</div>
+      <div class="company-sub">HR &amp; Payroll Operations Platform</div>
+    </div>
+    <div class="payslip-title">
+      <h2>Payslip</h2>
+      <p>Pay Period: {{ period_start }} &ndash; {{ period_end }}</p>
+    </div>
+  </div>
+
+  <!-- ── Employee Info Grid ── -->
+  <div class="info-grid">
+    <div class="info-row">
+      <span class="info-label">Employee</span>
+      <span class="info-value">{{ employee_name }}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Department</span>
+      <span class="info-value">{{ department or "—" }}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Pay Period Start</span>
+      <span class="info-value">{{ period_start }}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Pay Period End</span>
+      <span class="info-value">{{ period_end }}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Base Wage</span>
+      <span class="info-value">{{ "%.2f"|format(basic_pay) }}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Gross Pay</span>
+      <span class="info-value">{{ "%.2f"|format(gross) }}</span>
+    </div>
+  </div>
+
+  <!-- ── Itemized Breakdown Table ── -->
+  <div class="section-title">Salary Breakdown</div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Rule</th>
+        <th>Description</th>
+        <th>Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set ns = namespace(seq=1) %}
+
+      {# Earnings #}
+      <tr>
+        <td>{{ ns.seq }}{% set ns.seq = ns.seq + 1 %}</td>
+        <td>BASIC</td>
+        <td>Basic Pay</td>
+        <td>{{ "%.2f"|format(breakdown.get("1_Basic_Pay", basic_pay)) }}</td>
+      </tr>
+      <tr>
+        <td>{{ ns.seq }}{% set ns.seq = ns.seq + 1 %}</td>
+        <td>ALLOWANCE</td>
+        <td>Housing Allowance</td>
+        <td>{{ "%.2f"|format(breakdown.get("2_Housing_Allowance", 0)) }}</td>
+      </tr>
+      <tr>
+        <td>{{ ns.seq }}{% set ns.seq = ns.seq + 1 %}</td>
+        <td>ALLOWANCE</td>
+        <td>Transport Allowance</td>
+        <td>{{ "%.2f"|format(breakdown.get("2_Transport_Allowance", 0)) }}</td>
+      </tr>
+      <tr class="row-gross">
+        <td>{{ ns.seq }}{% set ns.seq = ns.seq + 1 %}</td>
+        <td>GROSS</td>
+        <td>Gross Pay</td>
+        <td>{{ "%.2f"|format(gross) }}</td>
+      </tr>
+
+      {# Deductions #}
+      {% if breakdown.get("4_LOP_Days", 0) > 0 %}
+      <tr class="row-deduction">
+        <td>{{ ns.seq }}{% set ns.seq = ns.seq + 1 %}</td>
+        <td>LOP</td>
+        <td>Loss of Pay ({{ breakdown.get("4_LOP_Days", 0) }} day(s) &times; {{ "%.2f"|format(breakdown.get("4_Daily_Rate", 0)) }})</td>
+        <td>&minus; {{ "%.2f"|format(breakdown.get("4_LOP_Deduction", 0)) }}</td>
+      </tr>
+      {% endif %}
+      <tr class="row-deduction">
+        <td>{{ ns.seq }}{% set ns.seq = ns.seq + 1 %}</td>
+        <td>TAX</td>
+        <td>Income Tax (7%)</td>
+        <td>&minus; {{ "%.2f"|format(breakdown.get("5_Income_Tax", 0)) }}</td>
+      </tr>
+      <tr class="row-deduction">
+        <td>{{ ns.seq }}{% set ns.seq = ns.seq + 1 %}</td>
+        <td>SOC_SEC</td>
+        <td>Social Security (3%)</td>
+        <td>&minus; {{ "%.2f"|format(breakdown.get("6_Social_Security", 0)) }}</td>
+      </tr>
+
+      {# Net #}
+      <tr class="row-net">
+        <td colspan="3">NET PAY</td>
+        <td>{{ "%.2f"|format(net_pay) }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ── Net Pay Summary ── -->
+  <div class="summary">
+    <div class="summary-box">
+      <div class="label">Total Net Pay</div>
+      <div class="amount">{{ "%.2f"|format(net_pay) }}</div>
+    </div>
+  </div>
+
+  <!-- ── Footer ── -->
+  <div class="footer">
+    <span>PeoplePay360 &mdash; Confidential Payslip Document</span>
+    <span>Generated: {{ period_end }} &nbsp;|&nbsp; This is a system-generated document</span>
+  </div>
+
+</body>
+</html>

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from database import get_db
-from models.payroll import Payrun, Payslip
-from models.employee import Employee
+from ..database import get_db
+from ..models.payroll import Payrun, Payslip
+from ..models.employee import Employee
 
 router = APIRouter()
 
@@ -18,7 +18,7 @@ def get_dashboard(
     if dept:
         query = query.filter(Employee.department == dept)
     if period:
-        query = query.filter(Payrun.period_start.startswith(period))
+        query = query.filter(Payrun.period_start.like(f"{period}%"))
 
     payslips = query.all()
 

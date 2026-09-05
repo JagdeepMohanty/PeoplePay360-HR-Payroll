@@ -1,19 +1,33 @@
-# Node dependencies
+# Node / Frontend
 node_modules/
 **/node_modules/
-
-# Build outputs
 dist/
 **/dist/
-build/
+dist-ssr/
+*.local
+.npm
+.vite
+
+# Python / Backend
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+*.sqlite3
+
+# Logs & Environment
 *.log
-
-# Environment files
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
-# IDE & OS files
+# IDE & OS
 .vscode/
 .idea/
 .DS_Store
