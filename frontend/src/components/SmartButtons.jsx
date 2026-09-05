@@ -1,67 +1,73 @@
 import { useNavigate } from 'react-router-dom'
-import { useQueries } from '@tanstack/react-query'
-import { FileText, Clock, Umbrella } from 'lucide-react'
-import client from '../api/client'
+import { FileText, Clock, Calendar, PieChart } from 'lucide-react'
 
-const fetchCount = (path) => () =>
-  client.get(path).then((r) => (Array.isArray(r.data) ? r.data.length : 0))
-
-export default function SmartButtons({ employeeId }) {
+export default function SmartButtons({ employee }) {
   const navigate = useNavigate()
 
-  const [contractsQ, attendanceQ, leavesQ] = useQueries({
-    queries: [
-      { queryKey: ['contracts', 'count', employeeId], queryFn: fetchCount(`/contracts?employee_id=${employeeId}`), enabled: !!employeeId },
-      { queryKey: ['attendance', 'count', employeeId], queryFn: fetchCount(`/attendance?employee_id=${employeeId}`), enabled: !!employeeId },
-      { queryKey: ['leaves',    'count', employeeId], queryFn: fetchCount(`/leaves?employee_id=${employeeId}`),    enabled: !!employeeId },
-    ],
-  })
+  if (!employee) return null
 
   const buttons = [
     {
       label: 'Contracts',
+      count: employee.contracts_count ?? 0,
+      unit: '',
       icon: FileText,
-      path: `/contracts?employee_id=${employeeId}`,
-      count: contractsQ.data,
-      loading: contractsQ.isLoading,
+      color: 'from-blue-500/20 to-indigo-500/20 border-blue-500/30 text-blue-300 hover:border-blue-400',
+      path: `/contracts?employee_id=${employee.id}`,
     },
     {
       label: 'Attendance',
+      count: employee.attendances_count ?? 0,
+      unit: '',
       icon: Clock,
-      path: `/attendance?employee_id=${employeeId}`,
-      count: attendanceQ.data,
-      loading: attendanceQ.isLoading,
+      color: 'from-purple-500/20 to-pink-500/20 border-purple-500/30 text-purple-300 hover:border-purple-400',
+      path: `/attendance?employee_id=${employee.id}`,
     },
     {
-      label: 'Time Off',
-      icon: Umbrella,
-      path: `/time-off?employee_id=${employeeId}`,
-      count: leavesQ.data,
-      loading: leavesQ.isLoading,
+      label: 'Leaves',
+      count: employee.leaves_count ?? 0,
+      unit: '',
+      icon: Calendar,
+      color: 'from-amber-500/20 to-orange-500/20 border-amber-500/30 text-amber-300 hover:border-amber-400',
+      path: `/time-off?employee_id=${employee.id}`,
+    },
+    {
+      label: 'Balance',
+      count: employee.leave_balance ?? 0,
+      unit: 'd',
+      icon: PieChart,
+      color: 'from-emerald-500/20 to-teal-500/20 border-emerald-500/30 text-emerald-300 hover:border-emerald-400',
+      path: `/time-off?employee_id=${employee.id}`,
     },
   ]
 
   return (
-    <div className="flex gap-2 flex-wrap">
-      {buttons.map(({ label, icon: Icon, path, count, loading }) => (
-        <button
-          key={label}
-          onClick={() => navigate(path)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
-        >
-          <Icon size={13} />
-          {label}
-          <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs font-semibold ${
-            loading
-              ? 'bg-gray-100 text-gray-400'
-              : count > 0
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-500'
-          }`}>
-            {loading ? '…' : count ?? 0}
-          </span>
-        </button>
-      ))}
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
+      {buttons.map((btn, idx) => {
+        const Icon = btn.icon
+        return (
+          <button
+            key={idx}
+            onClick={() => navigate(btn.path)}
+            className={`flex items-center justify-between p-3 rounded-xl bg-gradient-to-r ${btn.color} border backdrop-blur-md transition-all duration-200 hover:scale-[1.02] shadow-sm text-left group`}
+          >
+            <div className="flex items-center space-x-3">
+              <div className="p-2 rounded-lg bg-slate-900/60 group-hover:scale-110 transition-transform">
+                <Icon className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-[11px] uppercase tracking-wider font-semibold opacity-75">
+                  {btn.label}
+                </div>
+                <div className="text-lg font-extrabold leading-tight">
+                  {btn.count}
+                  {btn.unit}
+                </div>
+              </div>
+            </div>
+          </button>
+        )
+      })}
     </div>
   )
 }

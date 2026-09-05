@@ -1,479 +1,262 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { getDashboardMetrics } from '../api/dashboard'
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  Area, AreaChart, CartesianGrid
-} from 'recharts'
-import {
-  DollarSign, Users, TrendingUp, AlertTriangle, ArrowUpRight,
-  Sparkles, Calendar, CheckCircle2, ChevronRight, ShieldCheck,
-  FileCheck, Clock, Umbrella, Activity
+  DollarSign,
+  Users,
+  FileCheck,
+  Calendar,
+  Clock,
+  Filter,
+  BarChart2,
+  TrendingUp,
+  PieChart as PieChartIcon,
 } from 'lucide-react'
-import { usePayroll } from '@/context/PayrollContext'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from 'recharts'
+
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899']
 
 export default function Dashboard() {
-  const {
-    employees,
-    contracts,
-    attendance,
-    timeOffRequests,
-    payruns,
-    role,
-    permissions
-  } = usePayroll()
+  const [metrics, setMetrics] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [period, setPeriod] = useState('2025-07')
+  const [department, setDepartment] = useState('')
 
-  const [selectedDept, setSelectedDept] = useState('All')
+  useEffect(() => {
+    loadMetrics()
+  }, [period, department])
 
-  const formatCurrency = (val) =>
-    new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(val || 0)
-
-  // ── B9) Dynamic KPI Aggregations ──
-  const activeEmployees = employees.filter(e => e.status === 'Active')
-  const totalNetPaid = payruns.reduce((sum, p) => p.status === 'Paid' ? sum + p.total_net : sum, 0)
-  const totalPayslipsCount = payruns.reduce((sum, p) => sum + (p.payslips?.length || 0), 0)
-  const avgSalary = Math.round(employees.reduce((sum, e) => sum + (e.wage || 0), 0) / (employees.length || 1))
-  const approvedLeavesCount = timeOffRequests.filter(t => t.status === 'Approved').length
-  const pendingLeavesCount = timeOffRequests.filter(t => t.status === 'Pending').length
-
-  // Attendance overview numbers
-  const presentCount = attendance.filter(a => a.status === 'Present').length
-  const lateCount = attendance.filter(a => a.status === 'Late').length
-  const absentCount = attendance.filter(a => a.status === 'Absent').length
-  const onLeaveCount = attendance.filter(a => a.status === 'On Leave').length
-  const attendanceRate = attendance.length > 0
-    ? Math.round((presentCount / attendance.length) * 100)
-    : 98
-
-  // Department cost breakdown calculation
-  const departments = ['Engineering', 'HR', 'Sales', 'Operations', 'Marketing']
-  const deptCostData = departments.map(dept => {
-    const deptEmps = employees.filter(e => e.department === dept)
-    const gross = deptEmps.reduce((sum, e) => sum + e.wage, 0)
-    const net = Math.round(gross * 0.85)
-    return {
-      department: dept,
-      gross,
-      net,
-      employees: deptEmps.length,
+  const loadMetrics = async () => {
+    setLoading(true)
+    try {
+      const data = await getDashboardMetrics({ period, dept: department })
+      setMetrics(data)
+    } catch (err) {
+      console.error('Failed to load dashboard metrics:', err)
+    } finally {
+      setLoading(false)
     }
-  }).filter(d => selectedDept === 'All' || d.department === selectedDept)
-
-  // ── Real-time monthly trend from actual payrun data ──
-  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-  const trendMap = {}
-  payruns.forEach(p => {
-    if (!p.period_start) return
-    const d = new Date(p.period_start)
-    const key = `${MONTH_NAMES[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`
-    trendMap[key] = (trendMap[key] || 0) + (p.total_gross || 0)
-  })
-  // Build ordered array from oldest to newest
-  const trendData = Object.entries(trendMap)
-    .sort((a, b) => {
-      const mA = payruns.find(p => p.period_start?.includes(a[0]?.split(' ')[0]))?.period_start || ''
-      const mB = payruns.find(p => p.period_start?.includes(b[0]?.split(' ')[0]))?.period_start || ''
-      return mA.localeCompare(mB)
-    })
-    .map(([month, total]) => ({ month, total }))
-
-  // Add forward estimate if we have at least one real data point
-  const lastTotal = trendData[trendData.length - 1]?.total || 0
-  if (lastTotal > 0) {
-    const nextMonth = new Date()
-    nextMonth.setMonth(nextMonth.getMonth() + 1)
-    trendData.push({ month: `${MONTH_NAMES[nextMonth.getMonth()]} (Est)`, total: Math.round(lastTotal * 1.02), estimated: true })
   }
 
-  // ── Live Pending-Payrun Warning Count ──
-  const totalPayrunWarnings = payruns.reduce((sum, p) => sum + (p.warnings?.length || 0), 0)
-  // ── Expiring contracts ──
-  const expiringContracts = contracts.filter(c => {
-    if (c.end_date === 'Open-ended' || !c.end_date) return false
-    const diff = new Date(c.end_date) - new Date()
-    return diff > 0 && diff < 90 * 24 * 60 * 60 * 1000 // within 90 days
-  })
-  // ── Total payroll budget (from active contracts) ──
-  const totalMonthlyBudget = contracts
-    .filter(c => c.status === 'Active')
-    .reduce((sum, c) => sum + (c.wage || 0), 0)
+  const summary = metrics?.summary || {}
+  const byDept = metrics?.by_department || {}
 
-  const kpis = [
-    {
-      title: 'Total Net Salary Paid',
-      value: formatCurrency(totalNetPaid || totalMonthlyBudget * 0.85),
-      trend: `${payruns.filter(p => p.status === 'Paid').length} Completed Batches`,
-      icon: DollarSign,
-      iconBg: 'bg-[#714b67]/10 text-[#714b67]',
-    },
-    {
-      title: 'Active Employees',
-      value: activeEmployees.length.toString(),
-      trend: `${employees.length} Master records`,
-      icon: Users,
-      iconBg: 'bg-teal-50 text-teal-700',
-    },
-    {
-      title: 'Average Base Wage',
-      value: formatCurrency(avgSalary),
-      trend: 'Across active contracts',
-      icon: TrendingUp,
-      iconBg: 'bg-blue-50 text-blue-700',
-    },
-    {
-      title: 'Attendance Health',
-      value: `${attendanceRate}%`,
-      trend: `${presentCount} Present · ${lateCount} Late`,
-      icon: Activity,
-      iconBg: 'bg-emerald-50 text-emerald-700',
-      badge: attendanceRate >= 95 ? 'Optimal' : 'Review',
-    },
-  ]
+  const deptChartData = Object.keys(byDept).map((deptName) => ({
+    name: deptName,
+    Gross: byDept[deptName].gross,
+    Net: byDept[deptName].net,
+    Deductions: byDept[deptName].deductions,
+    Headcount: byDept[deptName].headcount,
+  }))
+
+  const pieData = Object.keys(byDept).map((deptName) => ({
+    name: deptName,
+    value: byDept[deptName].net || 1,
+  }))
+
+  const avgSalary = summary.payslip_count > 0 ? summary.total_net / summary.payslip_count : 0
 
   return (
-    <div className="space-y-5">
-      {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+    <div className="space-y-6">
+      {/* Header & Live Filter Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl glass-panel border border-slate-800">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">
-            Payroll & HR Dashboard
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Aggregated metrics across Employees, Contracts, Attendance, and Payruns.
+          <h2 className="text-2xl font-extrabold text-white flex items-center gap-2">
+            <BarChart2 className="w-7 h-7 text-brand-400" />
+            <span>Payroll Analytics Dashboard</span>
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Real-time workforce intelligence, salary distribution, and operational metrics
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Department Filter */}
-          <select
-            value={selectedDept}
-            onChange={(e) => setSelectedDept(e.target.value)}
-            className="h-8 rounded-lg border-0 bg-white px-3 text-xs font-medium text-slate-800 shadow-xs focus:ring-1 focus:ring-[#714b67]"
-          >
-            <option value="All">All Departments</option>
-            {departments.map(d => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs">
+            <Filter className="w-3.5 h-3.5 text-brand-400" />
+            <span className="text-slate-400">Period:</span>
+            <input
+              type="month"
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              className="bg-transparent text-white font-bold focus:outline-none"
+            />
+          </div>
 
-          {permissions.canEditPayroll && (
-            <Link to="/payruns">
-              <Button className="gap-1.5 font-medium shadow-xs">
-                <Sparkles className="h-3.5 w-3.5" />
-                New Payrun
-              </Button>
-            </Link>
-          )}
+          <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs">
+            <span className="text-slate-400">Dept:</span>
+            <select
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              className="bg-transparent text-white font-bold focus:outline-none"
+            >
+              <option value="" className="bg-slate-900 text-white">All Departments</option>
+              <option value="Engineering" className="bg-slate-900 text-white">Engineering</option>
+              <option value="Human Resources" className="bg-slate-900 text-white">Human Resources</option>
+              <option value="Finance" className="bg-slate-900 text-white">Finance</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* KPI Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* KPI 1 */}
+        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-2">
+          <div className="flex items-center justify-between text-emerald-400">
+            <span className="text-xs font-semibold text-slate-400">Total Net Paid</span>
+            <DollarSign className="w-5 h-5 p-1 rounded-lg bg-emerald-500/20" />
+          </div>
+          <div className="text-2xl font-black text-white">
+            ${summary.total_net?.toLocaleString() || '0'}
+          </div>
+          <div className="text-[11px] text-emerald-400/80 font-medium flex items-center gap-1">
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span>Gross: ${summary.total_gross?.toLocaleString() || '0'}</span>
+          </div>
+        </div>
+
+        {/* KPI 2 */}
+        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-2">
+          <div className="flex items-center justify-between text-blue-400">
+            <span className="text-xs font-semibold text-slate-400">Payslips Generated</span>
+            <FileCheck className="w-5 h-5 p-1 rounded-lg bg-blue-500/20" />
+          </div>
+          <div className="text-2xl font-black text-white">
+            {summary.payslip_count || 0}
+          </div>
+          <div className="text-[11px] text-blue-400/80 font-medium">
+            Active Contracts: {summary.active_contracts || 0}
+          </div>
+        </div>
+
+        {/* KPI 3 */}
+        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-2">
+          <div className="flex items-center justify-between text-purple-400">
+            <span className="text-xs font-semibold text-slate-400">Average Salary</span>
+            <Users className="w-5 h-5 p-1 rounded-lg bg-purple-500/20" />
+          </div>
+          <div className="text-2xl font-black text-white">
+            ${avgSalary ? Math.round(avgSalary).toLocaleString() : '0'}
+          </div>
+          <div className="text-[11px] text-purple-400/80 font-medium">
+            Headcount: {summary.total_employees || 0}
+          </div>
+        </div>
+
+        {/* KPI 4 */}
+        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-2">
+          <div className="flex items-center justify-between text-amber-400">
+            <span className="text-xs font-semibold text-slate-400">Approved Leaves</span>
+            <Calendar className="w-5 h-5 p-1 rounded-lg bg-amber-500/20" />
+          </div>
+          <div className="text-2xl font-black text-white">
+            {summary.approved_leaves || 0}
+          </div>
+          <div className="text-[11px] text-amber-400/80 font-medium">
+            Pending Approval: {summary.pending_leaves || 0}
+          </div>
+        </div>
+
+        {/* KPI 5 */}
+        <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-2">
+          <div className="flex items-center justify-between text-pink-400">
+            <span className="text-xs font-semibold text-slate-400">Attendance Health</span>
+            <Clock className="w-5 h-5 p-1 rounded-lg bg-pink-500/20" />
+          </div>
+          <div className="text-2xl font-black text-white">
+            {summary.attendance_health !== undefined ? `${summary.attendance_health}%` : '100%'}
+          </div>
+          <div className="text-[11px] text-pink-400/80 font-medium">
+            {summary.total_worked_hours || 0}h worked ({summary.attendance_count || 0} logs)
+          </div>
         </div>
       </div>
 
-      {/* B9) KPI Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {kpis.map((kpi) => {
-          const Icon = kpi.icon
-          return (
-            <Card key={kpi.title} className="hover:shadow-md transition-all">
-              <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    {kpi.title}
-                  </span>
-                  <div className={`p-2 rounded-xl ${kpi.iconBg}`}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold tracking-tight tabular-nums text-slate-900">
-                    {kpi.value}
-                  </div>
-                  <div className="flex items-center justify-between mt-1 text-xs text-slate-500">
-                    <span>{kpi.trend}</span>
-                    {kpi.badge && (
-                      <Badge variant="success" className="text-[10px] px-2 py-0.5">
-                        {kpi.badge}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
 
-      {/* B9) Workforce & Attendance Status Strip */}
-      <Card className="p-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-[#714b67]" />
-            <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">Today's Workforce Health</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-              {presentCount} Present
-            </span>
-            <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-800 font-semibold flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
-              {lateCount} Late
-            </span>
-            <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-semibold flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-              {onLeaveCount} On Leave
-            </span>
-            <span className="px-3 py-1 rounded-full bg-rose-50 text-rose-700 font-semibold flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
-              {absentCount} Absent
-            </span>
-            <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 font-medium">
-              Coverage: {attendanceRate}%
-            </span>
-          </div>
-        </div>
-      </Card>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
-        {/* Department Gross vs Net */}
-        <Card className="lg:col-span-4">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-semibold text-slate-900">
-                  Salary Expenditure by Department
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Gross budgeted payroll vs Net paid to bank
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-3 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <div className="h-2.5 w-2.5 rounded-full bg-[#714b67]" />
-                  <span className="text-slate-600 text-[11px]">Gross</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="h-2.5 w-2.5 rounded-full bg-[#00a09d]" />
-                  <span className="text-slate-600 text-[11px]">Net</span>
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="h-[250px] w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={deptCostData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="2 2" stroke="#f8fafc" vertical={false} />
-                <XAxis
-                  dataKey="department"
-                  stroke="#94a3b8"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#94a3b8"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#ffffff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '11px',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-                  }}
-                  formatter={(val) => [formatCurrency(val), '']}
-                />
-                <Bar dataKey="gross" fill="#714b67" radius={[6, 6, 0, 0]} maxBarSize={28} />
-                <Bar dataKey="net" fill="#00a09d" radius={[6, 6, 0, 0]} maxBarSize={28} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* 6-Month Trajectory Area */}
-        <Card className="lg:col-span-3">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-900">
-              Monthly Salary Trend
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Recent cycles aggregate disbursement history
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-[250px] w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="odooGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#714b67" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#714b67" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="2 2" stroke="#f8fafc" vertical={false} />
-                <XAxis
-                  dataKey="month"
-                  stroke="#94a3b8"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#94a3b8"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#ffffff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '11px',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-                  }}
-                  formatter={(val) => [formatCurrency(val), 'Payroll Total']}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="total"
-                  stroke="#714b67"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#odooGradient)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Table & Operational Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Department Overview Table (Headcount + Salary) */}
-        <Card className="lg:col-span-2 p-0 overflow-hidden">
-          <div className="p-4 flex items-center justify-between">
+      {/* Visual Analytics Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Chart 1: Department Salary Distribution (Bar Chart) */}
+        <div className="lg:col-span-2 glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
+          <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">Department Headcount & Cost Distribution</h3>
-              <p className="text-xs text-slate-500">Staff distribution and budget allocation</p>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <BarChart2 className="w-4 h-4 text-brand-400" />
+                <span>Department Salary Breakdown</span>
+              </h3>
+              <p className="text-xs text-slate-400">Gross vs Net salary payout per department</p>
             </div>
-            <Link to="/employees">
-              <Button variant="ghost" size="sm" className="text-xs gap-1 h-7">
-                View Staff <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </Link>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Department</TableHead>
-                <TableHead className="text-center">Staff Count</TableHead>
-                <TableHead className="text-right">Monthly Gross</TableHead>
-                <TableHead className="text-right">Monthly Net</TableHead>
-                <TableHead className="text-right">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {deptCostData.map((d) => (
-                <TableRow key={d.department}>
-                  <TableCell className="font-semibold text-slate-900">
-                    {d.department}
-                  </TableCell>
-                  <TableCell className="text-center text-slate-600">
-                    {d.employees} staff
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums font-semibold text-slate-900">
-                    {formatCurrency(d.gross)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums font-semibold text-emerald-700">
-                    {formatCurrency(d.net)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Badge variant="success" className="text-[10px]">
-                      Operational
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
 
-        {/* Operational Alerts Card (B9) */}
-        <Card className="p-5 space-y-3">
+          <div className="h-64 w-full">
+            {deptChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={deptChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
+                  <YAxis stroke="#94a3b8" fontSize={12} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#fff' }}
+                  />
+                  <Bar dataKey="Gross" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="Net" fill="#10b981" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-xs text-slate-500">
+                No computed salary data for selected period/department.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Chart 2: Net Payout Distribution (Pie Chart) */}
+        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
-              Operational Payroll Alerts
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <PieChartIcon className="w-4 h-4 text-purple-400" />
+              <span>Net Payout Share</span>
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">Real-time alerts across HR modules</p>
+            <p className="text-xs text-slate-400">Share of net salaries by department</p>
           </div>
 
-          <div className="space-y-2.5 text-xs">
-            {pendingLeavesCount > 0 ? (
-              <div className="p-3 rounded-xl bg-amber-50/80 space-y-1">
-                <div className="font-semibold text-amber-900">{pendingLeavesCount} Unapproved Time-off Requests</div>
-                <p className="text-[11px] text-amber-800/80">
-                  Requires manager approval before next payroll cycle.
-                </p>
-                <Link to="/time-off" className="inline-block pt-0.5 text-xs text-[#714b67] font-semibold hover:underline">
-                  Review & Approve →
-                </Link>
-              </div>
+          <div className="h-64 w-full flex items-center justify-center">
+            {pieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }} />
+                  <Legend wrapperStyle={{ fontSize: '11px', color: '#cbd5e1' }} />
+                </PieChart>
+              </ResponsiveContainer>
             ) : (
-              <div className="p-3 rounded-xl bg-emerald-50 text-emerald-800 text-[11px] font-medium flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                All employee leave requests are approved.
-              </div>
+              <div className="text-xs text-slate-500">No data available.</div>
             )}
-
-            {expiringContracts.length > 0 ? (
-              <div className="p-3 rounded-xl bg-blue-50/80 space-y-1">
-                <div className="font-semibold text-blue-900">{expiringContracts.length} Contract{expiringContracts.length > 1 ? 's' : ''} Expiring Soon</div>
-                <p className="text-[11px] text-blue-800/80">
-                  {expiringContracts.map(c => c.employee).join(', ')} — renewals required within 90 days.
-                </p>
-                <Link to="/contracts" className="inline-block pt-0.5 text-xs text-[#714b67] font-semibold hover:underline">
-                  Review Contracts →
-                </Link>
-              </div>
-            ) : (
-              <div className="p-3 rounded-xl bg-emerald-50 text-emerald-800 text-[11px] font-medium flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                All active contracts are open-ended or long-term.
-              </div>
-            )}
-
-            {totalPayrunWarnings > 0 && (
-              <div className="p-3 rounded-xl bg-rose-50/70 space-y-1">
-                <div className="font-semibold text-rose-900">{totalPayrunWarnings} Unresolved Payrun Issue{totalPayrunWarnings > 1 ? 's' : ''}</div>
-                <p className="text-[11px] text-rose-800/80">Critical warnings detected in open payruns. Resolve before disbursement.</p>
-                <Link to="/payruns" className="inline-block pt-0.5 text-xs text-[#714b67] font-semibold hover:underline">Review Payruns →</Link>
-              </div>
-            )}
-
-            <div className="p-3 rounded-xl bg-slate-50 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                <div>
-                  <div className="font-medium text-slate-800">Biometric Devices Synced</div>
-                  <span className="text-[10px] text-slate-400">3 Terminals Active</span>
-                </div>
-              </div>
-              <Badge variant="success" className="text-[10px]">Online</Badge>
-            </div>
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   )

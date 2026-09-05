@@ -1,19 +1,16 @@
 import { Outlet } from 'react-router-dom'
-import Sidebar from './Sidebar'
 import Navbar from './Navbar'
 
 export default function Layout() {
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden">
-      <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Navbar />
-        <main className="flex-1 overflow-y-auto p-5 md:p-6 bg-[#f9fafb]">
-          <div className="max-w-7xl mx-auto space-y-5">
-            <Outlet />
-          </div>
-        </main>
-      </div>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-brand-500 selection:text-white">
+      <Navbar />
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8">
+        <Outlet />
+      </main>
+      <footer className="glass-panel border-t border-slate-800/80 py-4 text-center text-xs text-slate-400">
+        PeoplePay360 HR & Payroll Engine &copy; 2025. Built with FastAPI & React.
+      </footer>
     </div>
   )
 }

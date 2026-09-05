@@ -1,49 +1,37 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Users, FileText, Clock, Umbrella,
-  DollarSign, ChevronRight, Layers, Sliders, CalendarCheck, Shield
+  DollarSign, ChevronRight, Layers, Sliders, CalendarCheck
 } from 'lucide-react'
-import { usePayroll } from '@/context/PayrollContext'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
+
+
+const navGroups = [
+  {
+    title: 'Overview',
+    items: [
+      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    ],
+  },
+  {
+    title: 'Human Resources',
+    items: [
+      { to: '/employees', label: 'Employees', icon: Users },
+      { to: '/attendance', label: 'Attendance', icon: Clock },
+      { to: '/time-off', label: 'Time Off', icon: Umbrella },
+      { to: '/schedules', label: 'Work Schedules', icon: CalendarCheck },
+    ],
+  },
+  {
+    title: 'Payroll & Compliance',
+    items: [
+      { to: '/contracts', label: 'Contracts', icon: FileText },
+      { to: '/payruns', label: 'Payruns', icon: DollarSign, badge: 'Active' },
+      { to: '/structures', label: 'Salary Structures', icon: Sliders },
+    ],
+  },
+]
 
 export default function Sidebar() {
-  const { role, permissions } = usePayroll()
-
-  const navGroups = [
-    {
-      title: 'Overview',
-      items: [
-        { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      ],
-    },
-    {
-      title: 'Human Resources',
-      items: [
-        { to: '/employees', label: 'Employees', icon: Users },
-        { to: '/attendance', label: 'Attendance', icon: Clock },
-        { to: '/time-off', label: 'Time Off', icon: Umbrella },
-        ...(permissions.canManageHR
-          ? [{ to: '/schedules', label: 'Work Schedules', icon: CalendarCheck }]
-          : []),
-      ],
-    },
-    ...(permissions.canViewPayroll
-      ? [
-          {
-            title: 'Payroll & Compliance',
-            items: [
-              { to: '/contracts', label: 'Contracts', icon: FileText },
-              { to: '/payruns', label: 'Payruns', icon: DollarSign, badge: 'Active' },
-              ...(permissions.canConfigureRules
-                ? [{ to: '/structures', label: 'Salary Structures', icon: Sliders }]
-                : []),
-            ],
-          },
-        ]
-      : []),
-  ]
-
   return (
     <aside className="w-60 bg-white shadow-[1px_0_4px_rgba(0,0,0,0.03)] flex flex-col justify-between h-screen shrink-0 select-none z-20">
       {/* Odoo App Header */}
@@ -100,22 +88,19 @@ export default function Sidebar() {
         ))}
       </div>
 
-      {/* User Section with Active Role */}
+      {/* User Section at bottom */}
       <div className="p-3 bg-slate-50/60">
-        <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-100/80 transition-colors">
+        <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-100/80 transition-colors cursor-pointer">
           <div className="flex items-center gap-2.5 min-w-0">
-            <Avatar className="h-7 w-7 border-0 shadow-xs">
-              <AvatarFallback className="bg-[#714b67]/15 text-[#714b67] text-xs font-semibold">
-                LM
-              </AvatarFallback>
-            </Avatar>
+            <div className="h-7 w-7 rounded-full bg-[#714b67]/15 text-[#714b67] text-xs font-semibold flex items-center justify-center">
+              LM
+            </div>
             <div className="flex flex-col min-w-0">
               <span className="text-xs font-medium text-slate-800 truncate">Lucky Mohanty</span>
-              <span className="text-[10px] text-slate-400 truncate flex items-center gap-1">
-                <Shield className="h-2.5 w-2.5 text-[#714b67]" /> {role}
-              </span>
+              <span className="text-[10px] text-slate-400 truncate">Payroll Officer</span>
             </div>
           </div>
+          <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
         </div>
       </div>
     </aside>

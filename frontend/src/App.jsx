@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { PayrollProvider } from './context/PayrollContext'
+import { AuthProvider } from './context/AuthContext'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Employees from './pages/Employees'
@@ -9,13 +9,10 @@ import Attendance from './pages/Attendance'
 import TimeOff from './pages/TimeOff'
 import Payruns from './pages/Payruns'
 import PayrunProcessing from './pages/PayrunProcessing'
-import PayslipReport from './pages/PayslipReport'
-import SalaryStructures from './pages/SalaryStructures'
-import WorkSchedules from './pages/WorkSchedules'
 
 export default function App() {
   return (
-    <PayrollProvider>
+    <AuthProvider>
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
@@ -25,15 +22,12 @@ export default function App() {
           <Route path="contracts" element={<Contracts />} />
           <Route path="attendance" element={<Attendance />} />
           <Route path="time-off" element={<TimeOff />} />
-          <Route path="timeoff" element={<Navigate to="/time-off" replace />} />
-          <Route path="schedules" element={<WorkSchedules />} />
-          <Route path="structures" element={<SalaryStructures />} />
           <Route path="payruns" element={<Payruns />} />
           <Route path="payruns/:id/process" element={<PayrunProcessing />} />
-          <Route path="payruns/:id/report" element={<PayslipReport />} />
+          {/* Wildcard Fallback prevents any 404 client route */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>
-    </PayrollProvider>
+    </AuthProvider>
   )
 }

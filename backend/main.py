@@ -15,12 +15,16 @@ from routers import (
     payruns,
     dashboard,
 )
+from seed import seed as run_seed
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    # Auto-seed on every startup — idempotent: skips if data already exists
+    run_seed(force=False)
     yield
+
 
 
 app = FastAPI(
