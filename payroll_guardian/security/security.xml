@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Module Security Category -->
+    <record id="category_payroll_guardian" model="ir.module.category">
+        <field name="name">Payroll Guardian &amp; Operations</field>
+        <field name="description">Access management for HR &amp; Payroll Platform</field>
+    </record>
+
+    <!-- Group 1: Standard User -->
+    <record id="group_payroll_user" model="res.groups">
+        <field name="name">HR Payroll User</field>
+        <field name="category_id" ref="category_payroll_guardian"/>
+    </record>
+
+    <!-- Group 2: Administrator / Manager (inherits User permissions) -->
+    <record id="group_payroll_manager" model="res.groups">
+        <field name="name">HR Payroll Manager</field>
+        <field name="category_id" ref="category_payroll_guardian"/>
+        <field name="implied_ids" eval="[(4, ref('group_payroll_user'))]"/>
+    </record>
+
+</odoo>
