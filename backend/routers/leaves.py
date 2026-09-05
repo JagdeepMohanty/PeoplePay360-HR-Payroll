@@ -5,7 +5,7 @@ from ..auth.dependencies import get_current_user, require_officer, require_manag
 
 
 from sqlalchemy.orm import Session
-from database import get_db
+from ..database import get_db
 from models.leave import Leave, LeaveAllocation
 from schemas.leave import LeaveCreate, LeaveRead
 

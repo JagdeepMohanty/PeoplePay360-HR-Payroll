@@ -7,9 +7,9 @@ from fastapi import HTTPException
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from models.contract import Contract
-from models.leave import Leave
-from models.payroll import Payslip
+from ..models.contract import Contract
+from ..models.leave import Leave
+from ..models.payroll import Payslip
 
 # ---------------------------------------------------------------------------
 # Rule rates

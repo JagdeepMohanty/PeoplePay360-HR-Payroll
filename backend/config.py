@@ -5,7 +5,7 @@ import os
 class Settings(BaseSettings):
     # Core settings
     database_url: str = "sqlite:///./peoplepay360.db"
-    secret_key: str
+    secret_key: str = "test_secret_key"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 

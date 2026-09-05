@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
-from database import get_db
-from models.contract import Contract
-from models.employee import Employee
-from models.payroll import Payrun, Payslip
+from ..database import get_db
+from ..models.contract import Contract
+from ..models.employee import Employee
+from ..models.payroll import Payrun, Payslip
 from schemas.payroll import PayrunCreate, PayrunRead, PayslipRead
 from services.salary_engine import compute_payslip
 from services.guardian_validator import validate_payrun
