@@ -42,6 +42,7 @@ export default function Attendance() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [apiError, setApiError] = useState(null)
 
   // Digital clock update every second
   useEffect(() => {
@@ -56,17 +57,28 @@ export default function Attendance() {
 
   const loadData = async () => {
     setLoading(true)
+    setApiError(null)
     try {
       const [attData, empData, statusData] = await Promise.all([
-        getAttendance(employeeFilterId ? Number(employeeFilterId) : null).catch(() => []),
-        getEmployees().catch(() => []),
-        getAttendanceStatus(user?.employee_id || null).catch(() => null),
+        getAttendance(employeeFilterId ? Number(employeeFilterId) : null).catch((e) => {
+          console.error('Failed to get attendance:', e)
+          return []
+        }),
+        getEmployees().catch((e) => {
+          console.error('Failed to get employees:', e)
+          return []
+        }),
+        getAttendanceStatus(user?.employee_id || null).catch((e) => {
+          console.error('Failed to get attendance status:', e)
+          return null
+        }),
       ])
       setAttendances(attData || [])
       setEmployees(empData || [])
       setTodayStatus(statusData || null)
     } catch (err) {
       console.error('Failed to load attendance logs:', err)
+      setApiError(err.response?.data?.detail || err.message || 'Failed to load attendance logs')
     } finally {
       setLoading(false)
     }
@@ -75,11 +87,13 @@ export default function Attendance() {
   // 1-Click Smart Punch Handler
   const handleSmartPunch = async () => {
     setPunchLoading(true)
+    setApiError(null)
     try {
       await punchAttendance(user?.employee_id || null)
       await loadData()
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to punch attendance')
+      const msg = err.response?.data?.detail || err.message || 'Failed to punch attendance'
+      setApiError(typeof msg === 'string' ? msg : JSON.stringify(msg))
     } finally {
       setPunchLoading(false)
     }
@@ -88,11 +102,13 @@ export default function Attendance() {
   // Delete Record Handler (HR/Admin)
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to remove this attendance record?')) return
+    setApiError(null)
     try {
       await deleteAttendance(id)
       setAttendances((prev) => prev.filter((a) => a.id !== id))
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to delete attendance record')
+      const msg = err.response?.data?.detail || err.message || 'Failed to delete attendance record'
+      setApiError(typeof msg === 'string' ? msg : JSON.stringify(msg))
     }
   }
 
@@ -173,6 +189,23 @@ export default function Attendance() {
           </button>
         </div>
       </div>
+
+      {/* Robust Error State Alert Banner */}
+      {apiError && (
+        <div className="flex items-center justify-between p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-medium animate-in fade-in duration-200 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{apiError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setApiError(null)}
+            className="text-rose-500 hover:text-rose-800 font-bold px-2 py-1 rounded-lg hover:bg-rose-100 transition-colors cursor-pointer border-0"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Smart 1-Click Kiosk Punch Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-[#1a2e35] to-slate-900 text-white p-6 rounded-2xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">

@@ -70,15 +70,21 @@ export default function LeaveRequestModal({ isOpen, onClose, onSuccess, employee
       const res = await submitLeave(payload)
       onSuccess(res)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to submit leave request.')
+      const detail = err.response?.data?.detail
+      const msg = typeof detail === 'string'
+        ? detail
+        : Array.isArray(detail)
+        ? detail.map((d) => d.msg || JSON.stringify(d)).join(', ')
+        : (detail ? JSON.stringify(detail) : (err.message || 'Failed to submit leave request.'))
+      setError(msg)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-xs">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 border-0">
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+      <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 border-0">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-amber-50 text-amber-700">
@@ -86,7 +92,7 @@ export default function LeaveRequestModal({ isOpen, onClose, onSuccess, employee
             </div>
             <h3 className="text-sm font-bold text-slate-900">New Time Off Request</h3>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 border-0 cursor-pointer">
+          <button type="button" onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 border-0 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>

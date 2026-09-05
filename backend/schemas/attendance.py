@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 
 class AttendanceBase(BaseModel):
-    employee_id: int
+    employee_id: Optional[int] = None
     check_in: datetime
     check_out: Optional[datetime] = None
     worked_hours: Optional[float] = 0.0

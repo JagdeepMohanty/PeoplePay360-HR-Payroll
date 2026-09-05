@@ -1,15 +1,17 @@
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
-from typing import List, Union
+from typing import List, Union, Optional
 import os
+import secrets
 
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_DB_FILE = os.path.join(BACKEND_DIR, "peoplepay360.db").replace("\\", "/")
 
 class Settings(BaseSettings):
     # Core settings
+    environment: str = os.getenv("ENVIRONMENT", "development")
     database_url: str = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_DB_FILE}")
-    secret_key: str = "test_secret_key"
+    secret_key: str = ""
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
@@ -28,6 +30,17 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
         "http://localhost:3000",
     ]
+
+    @field_validator("secret_key", mode="before")
+    @classmethod
+    def validate_secret_key(cls, v: Optional[str]) -> str:
+        env = os.getenv("ENVIRONMENT", "development").strip().lower()
+        if not v or v.strip() == "" or v.strip() == "test_secret_key":
+            if env == "production":
+                raise ValueError("CRITICAL SECURITY VIOLATION: Insecure or missing SECRET_KEY in production environment!")
+            # Generate a secure random token as a default for local development
+            return secrets.token_hex(32)
+        return v
 
     @field_validator("cors_origins", mode="before")
     @classmethod

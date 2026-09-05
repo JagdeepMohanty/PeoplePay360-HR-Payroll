@@ -3,8 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status, Body
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from database import get_db
-from auth import require_payroll_read, require_payroll_write, require_payroll_manager
-from models.user import User
+from auth import get_current_user, require_payroll_read, require_payroll_write, require_payroll_manager
+from models.user import User, UserRole
 from models.contract import Contract
 from models.employee import Employee
 from models.payroll import Payrun, Payslip, PayrunStatus
@@ -29,11 +29,24 @@ def list_payruns(
 def download_payslip_pdf(
     payslip_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_payroll_read),
+    current_user: User = Depends(get_current_user),
 ):
     slip = db.query(Payslip).filter(Payslip.id == payslip_id).first()
     if not slip:
         raise HTTPException(status_code=404, detail="Payslip not found")
+
+    is_admin = current_user.role in [
+        UserRole.HR_PAYROLL_USER,
+        UserRole.HR_PAYROLL_MANAGER,
+        UserRole.ADMIN,
+    ]
+    is_owner = (current_user.employee_id is not None and current_user.employee_id == slip.employee_id)
+
+    if not (is_admin or is_owner):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: You can only access your own payslip.",
+        )
 
     employee = db.query(Employee).filter(Employee.id == slip.employee_id).first()
     payrun = db.query(Payrun).filter(Payrun.id == slip.payrun_id).first()
@@ -145,6 +158,12 @@ def compute_payrun(
     payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
     if not payrun:
         raise HTTPException(status_code=404, detail="Payrun not found")
+
+    if payrun.status in [PayrunStatus.VALIDATED, PayrunStatus.PAID]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot recompute payrun in 'VALIDATED' or 'PAID' status.",
+        )
 
     # Capture employee scope previously associated with this batch if any
     existing_employee_ids = [

@@ -224,11 +224,10 @@ export default function PayrunProcessing() {
         </button>
 
         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-          payrun.status === 'PAID'
-            ? 'bg-emerald-50 text-emerald-700'
-            : payrun.status === 'VALIDATED'
-            ? 'bg-purple-50 text-[#714b67]'
-            : 'bg-amber-50 text-amber-700'
+          payrun.status === 'PAID'      ? 'bg-emerald-50 text-emerald-700' :
+          payrun.status === 'VALIDATED' ? 'bg-purple-50 text-[#714b67]'   :
+          payrun.status === 'COMPUTED'  ? 'bg-blue-50 text-blue-700'      :
+                                          'bg-amber-50 text-amber-700'
         }`}>
           Batch #{payrun.id} • {payrun.status}
         </span>
@@ -245,43 +244,52 @@ export default function PayrunProcessing() {
           </div>
 
           {/* Action Bar */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={handleCompute}
-              disabled={actionLoading}
-              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition-colors cursor-pointer border-0"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${actionLoading ? 'animate-spin' : ''}`} />
-              <span>Compute</span>
-            </button>
+          {(() => {
+            const isLocked = ['VALIDATED', 'PAID'].includes(payrun.status)
+            const isPaid   = payrun.status === 'PAID'
+            return (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleCompute}
+                  disabled={actionLoading || isLocked}
+                  title={isLocked ? `Cannot recompute a ${payrun.status} payrun` : 'Recompute salary rules'}
+                  className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition-colors border-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${actionLoading ? 'animate-spin' : ''}`} />
+                  <span>Compute</span>
+                </button>
 
-            <button
-              onClick={handleValidate}
-              disabled={actionLoading}
-              className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#714b67] text-xs font-semibold transition-colors cursor-pointer border-0"
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Validate</span>
-            </button>
+                <button
+                  onClick={handleValidate}
+                  disabled={actionLoading || isLocked}
+                  title={isLocked ? `Payrun is already ${payrun.status}` : 'Run Guardian validation checks'}
+                  className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#714b67] text-xs font-semibold transition-colors border-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Validate</span>
+                </button>
 
-            <button
-              onClick={handleMarkPaid}
-              disabled={actionLoading}
-              className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer border-0"
-            >
-              <CreditCard className="w-3.5 h-3.5" />
-              <span>Mark Paid</span>
-            </button>
+                <button
+                  onClick={handleMarkPaid}
+                  disabled={actionLoading || isPaid}
+                  title={isPaid ? 'Payrun is already marked as PAID' : 'Confirm disbursement and mark as PAID'}
+                  className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors border-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>Mark Paid</span>
+                </button>
 
-            <button
-              onClick={handleSendPayslips}
-              disabled={actionLoading}
-              className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-[#714b67] hover:bg-[#5e3d55] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer border-0"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>Send Payslips</span>
-            </button>
-          </div>
+                <button
+                  onClick={handleSendPayslips}
+                  disabled={actionLoading}
+                  className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-[#714b67] hover:bg-[#5e3d55] text-white text-xs font-semibold shadow-xs transition-colors border-0 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Send Payslips</span>
+                </button>
+              </div>
+            )
+          })()}
         </div>
 
         {/* Totals Summary */}

@@ -114,11 +114,25 @@ def submit_leave(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role == UserRole.EMPLOYEE:
-        if not current_user.employee_id or payload.employee_id != current_user.employee_id:
+        if not current_user.employee_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User account is not linked to an Employee profile. Contact HR.",
+            )
+        if payload.employee_id != current_user.employee_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Employees can only submit leave requests for themselves",
             )
+    else:
+        if not payload.employee_id:
+            if current_user.employee_id:
+                payload.employee_id = current_user.employee_id
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="User account is not linked to an Employee profile. Contact HR.",
+                )
 
     leave = LeaveRequest(**payload.model_dump(), status=LeaveStatus.PENDING)
     db.add(leave)
@@ -133,19 +147,20 @@ def approve_leave(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_hr_manager),
 ):
-    leave = db.query(LeaveRequest).filter(LeaveRequest.id == leave_id).first()
+    leave = db.query(LeaveRequest).filter(LeaveRequest.id == leave_id).with_for_update().first()
     if not leave:
         raise HTTPException(status_code=404, detail="Leave request not found")
     if leave.status == LeaveStatus.APPROVED:
         raise HTTPException(status_code=400, detail="Leave request is already approved")
 
-    # Module A4: Automatic balance check and deduction on approval
+    # Module A4: Automatic balance check and deduction on approval with pessimistic row locking
     allocation = (
         db.query(LeaveAllocation)
         .filter(
             LeaveAllocation.employee_id == leave.employee_id,
             LeaveAllocation.type_id == leave.type_id,
         )
+        .with_for_update()
         .first()
     )
 

@@ -5,7 +5,7 @@ Generates pixel-perfect, executive-grade PDF payslips via ReportLab with embedde
 import io
 import json
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -142,7 +142,7 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
     header_right = [
         Paragraph("CONFIDENTIAL SALARY PAYSLIP", header_right_style),
         Paragraph(f"Pay Period: <b>{period_str}</b>", header_right_sub),
-        Paragraph(f"Issue Date: {datetime.now().strftime('%d %b %Y')}", header_right_sub),
+        Paragraph(f"Issue Date: {datetime.now(timezone.utc).strftime('%d %b %Y')}", header_right_sub),
         Paragraph("Disbursement Status: <b>FINALIZED</b>", header_right_sub),
     ]
 
