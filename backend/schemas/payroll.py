@@ -49,12 +49,17 @@ class PayrunBase(BaseModel):
 
 
 class PayrunCreate(PayrunBase):
-    pass
+    employee_ids: Optional[List[int]] = None
+
+
+class PayrunComputeRequest(BaseModel):
+    employee_ids: Optional[List[int]] = None
 
 
 class PayrunRead(PayrunBase):
     id: int
     status: PayrunStatus
+    payslips: Optional[List["PayslipRead"]] = None
 
     class Config:
         from_attributes = True

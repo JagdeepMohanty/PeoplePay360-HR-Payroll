@@ -47,6 +47,7 @@ app.include_router(attendance.router, prefix="/api/v1/attendance", tags=["Attend
 app.include_router(leaves.router, prefix="/api/v1/leaves", tags=["Leaves & Time Off"])
 app.include_router(salary_structures.router, prefix="/api/v1/salary-structures", tags=["Salary Structures"])
 app.include_router(payruns.router, prefix="/api/v1/payruns", tags=["Payruns & Payslips"])
+app.include_router(payruns.router, prefix="/payruns", tags=["Payruns (Direct)"])
 app.include_router(dashboard.router, prefix="/api/v1/reports", tags=["Dashboard"])
 
 
