@@ -6,8 +6,9 @@ from ..auth.dependencies import get_current_user, require_officer, require_manag
 
 from sqlalchemy.orm import Session
 from ..database import get_db
-from models.leave import Leave, LeaveAllocation
-from schemas.leave import LeaveCreate, LeaveRead
+from ..models.leave import Leave, LeaveAllocation
+from ..models.user import User
+from ..schemas.leave import LeaveCreate, LeaveRead
 
 router = APIRouter()
 

@@ -28,12 +28,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(employees.router, prefix="/api/v1/employees", tags=["Employees"])
-app.include_router(contracts.router, prefix="/api/v1/contracts", tags=["Contracts"])
-app.include_router(attendance.router, prefix="/api/v1/attendance", tags=["Attendance"])
-app.include_router(leaves.router, prefix="/api/v1/leaves", tags=["Leaves"])
-app.include_router(payruns.router, prefix="/api/v1/payruns", tags=["Payruns"])
-app.include_router(dashboard.router, prefix="/api/v1/reports", tags=["Dashboard"])
+app.include_router(employees.router, prefix="/employees", tags=["Employees"])
+app.include_router(contracts.router, prefix="/contracts", tags=["Contracts"])
+app.include_router(attendance.router, prefix="/attendance", tags=["Attendance"])
+app.include_router(leaves.router, prefix="/leaves", tags=["Leaves"])
+app.include_router(payruns.router, prefix="/payruns", tags=["Payruns"])
+app.include_router(dashboard.router, prefix="/reports", tags=["Dashboard"])
 
 
 @app.get("/api/health", tags=["Health"])
