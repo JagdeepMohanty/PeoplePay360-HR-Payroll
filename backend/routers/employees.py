@@ -25,8 +25,13 @@ def get_my_employee_profile(
 
 @router.get("/", response_model=list[EmployeeRead])
 def list_employees(
-    db: Session = Depends(get_db), current_user: User = Depends(require_hr_manager)
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
+    if current_user.role == UserRole.EMPLOYEE:
+        if not current_user.employee_id:
+            return []
+        emp = db.query(Employee).filter(Employee.id == current_user.employee_id).first()
+        return [emp] if emp else []
     return db.query(Employee).all()
 
 

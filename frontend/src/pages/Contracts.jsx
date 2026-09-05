@@ -34,9 +34,9 @@ export default function Contracts() {
     setLoading(true)
     try {
       const [cData, eData, sData] = await Promise.all([
-        getContracts(employeeFilterId ? Number(employeeFilterId) : null),
-        getEmployees(),
-        getSalaryStructures(),
+        getContracts(employeeFilterId ? Number(employeeFilterId) : null).catch(() => []),
+        getEmployees().catch(() => []),
+        getSalaryStructures().catch(() => []),
       ])
       setContracts(cData || [])
       setEmployees(eData || [])

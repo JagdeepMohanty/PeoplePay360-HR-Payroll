@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from database import get_db
 from auth import get_current_user, require_hr_manager, check_employee_self_or_hr
-from models.user import User
+from models.user import User, UserRole
 from models.contract import Contract
 from schemas.contract import ContractCreate, ContractRead
 
@@ -35,9 +35,14 @@ def get_active_contract(
 def list_contracts(
     employee_id: Optional[int] = Query(None, description="Filter contracts by employee"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_hr_manager),
+    current_user: User = Depends(get_current_user),
 ):
     query = db.query(Contract)
+    if current_user.role == UserRole.EMPLOYEE:
+        if not current_user.employee_id:
+            return []
+        return query.filter(Contract.employee_id == current_user.employee_id).all()
+
     if employee_id is not None:
         query = query.filter(Contract.employee_id == employee_id)
     return query.all()

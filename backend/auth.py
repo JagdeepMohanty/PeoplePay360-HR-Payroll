@@ -111,11 +111,13 @@ require_payroll_write = require_roles(
 )
 
 
-# 4. Salary Structure & Rule Read Rights (HR_PAYROLL_USER, HR_PAYROLL_MANAGER, ADMIN)
+# 4. Salary Structure & Rule Read Rights (All authenticated roles)
 require_salary_structure_read = require_roles(
+    UserRole.HR_MANAGER,
     UserRole.HR_PAYROLL_USER,
     UserRole.HR_PAYROLL_MANAGER,
     UserRole.ADMIN,
+    UserRole.EMPLOYEE,
 )
 
 # 5. Salary Structure & Rule Full CRUD Rights (HR_PAYROLL_MANAGER, ADMIN)
