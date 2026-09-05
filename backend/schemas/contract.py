@@ -1,12 +1,16 @@
+from typing import Optional
 from pydantic import BaseModel
 
 
 class ContractBase(BaseModel):
     employee_id: int
     wage: float
-    state: str = "draft"
     date_start: str
-    date_end: str | None = None
+    date_end: Optional[str] = None
+    department: Optional[str] = None
+    job_position: Optional[str] = None
+    salary_structure_id: Optional[int] = None
+    is_active: bool = True
 
 
 class ContractCreate(ContractBase):
@@ -16,4 +20,5 @@ class ContractCreate(ContractBase):
 class ContractRead(ContractBase):
     id: int
 
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True
