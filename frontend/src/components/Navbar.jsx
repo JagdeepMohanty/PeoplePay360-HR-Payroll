@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 
 export default function Navbar() {
-  const { role, setRole, attendance, punchIn, punchOut } = usePayroll()
+  const { role, setRole, attendance, punchIn, punchOut, isBackendConnected } = usePayroll()
   const [time, setTime] = useState(new Date())
   const location = useLocation()
 
@@ -68,6 +68,16 @@ export default function Navbar() {
 
       {/* Right Controls */}
       <div className="flex items-center gap-3">
+        {/* Live Backend Connection Indicator */}
+        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium transition-all"
+          style={{
+            background: isBackendConnected ? '#ecfdf5' : '#fefce8',
+            color: isBackendConnected ? '#065f46' : '#854d0e',
+          }}>
+          <span className={`inline-block h-1.5 w-1.5 rounded-full ${isBackendConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`}></span>
+          <span>{isBackendConnected ? 'FastAPI :8000' : 'Local Mode'}</span>
+        </div>
+
         {/* Role Switcher (Operational Experience Requirement 3) */}
         <div className="flex items-center gap-1.5 bg-slate-100/80 px-2 py-1 rounded-full text-xs">
           <Shield className="h-3 w-3 text-[#714b67]" />

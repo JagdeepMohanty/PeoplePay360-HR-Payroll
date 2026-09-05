@@ -216,3 +216,20 @@ def send_payslips(
         "dispatched_details": dispatched,
     }
 
+
+@router.post("/{payrun_id}/pay", response_model=PayrunRead)
+def mark_payrun_paid(
+    payrun_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_payroll_write),
+):
+    payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
+    if not payrun:
+        raise HTTPException(status_code=404, detail="Payrun not found")
+    payrun.status = PayrunStatus.PAID
+    # also mark all payslips paid if status column exists
+    db.commit()
+    db.refresh(payrun)
+    return payrun
+
+
