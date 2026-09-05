@@ -1,11 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import {
-  FileText, Plus, Search, Calendar, DollarSign,
-  ExternalLink, CheckCircle2, Shield
-} from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
+import { Plus, Search, FileText } from 'lucide-react'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -58,45 +54,43 @@ export default function Contracts() {
     }).format(amount)
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4">
+      {/* Top Action Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Employee Contracts</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Maintain salary structures, wage rates, employment validity, and PF/ESI compliance.
-          </p>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">Contracts</h1>
+          <p className="text-xs text-slate-500">Employment terms, wage components, and validity periods.</p>
         </div>
-        <Button className="gap-2 font-medium">
-          <Plus className="h-4 w-4" /> New Contract
+        <Button className="gap-1.5 font-medium">
+          <Plus className="h-3.5 w-3.5" /> New Contract
         </Button>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card/60 p-3 rounded-xl border border-border">
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by ref, employee, or department..."
-            className="pl-9 h-9 text-xs"
+            placeholder="Search by ref or employee..."
+            className="pl-8 h-8 text-xs bg-white"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+        <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto">
           {['All', 'Active', 'Expired'].map((st) => (
-            <Button
+            <button
               key={st}
-              variant={statusFilter === st ? 'secondary' : 'ghost'}
-              size="sm"
               onClick={() => setStatusFilter(st)}
-              className={`text-xs h-8 px-3 rounded-lg ${
-                statusFilter === st ? 'bg-primary/15 text-primary border border-primary/20' : ''
+              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                statusFilter === st
+                  ? 'bg-[#714b67] text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
               {st}
-            </Button>
+            </button>
           ))}
         </div>
       </div>
@@ -118,21 +112,21 @@ export default function Contracts() {
           <TableBody>
             {filtered.map((c) => (
               <TableRow key={c.id}>
-                <TableCell className="font-mono text-xs text-primary font-medium">
+                <TableCell className="font-mono text-xs text-[#714b67] font-semibold">
                   {c.contract_ref}
                 </TableCell>
-                <TableCell className="font-medium text-foreground">
+                <TableCell className="font-medium text-slate-900">
                   <div>{c.employee}</div>
-                  <span className="text-[11px] text-muted-foreground">{c.job_position} · {c.department}</span>
+                  <span className="text-[11px] text-slate-500">{c.job_position} · {c.department}</span>
                 </TableCell>
-                <TableCell className="text-xs text-muted-foreground">{c.structure}</TableCell>
-                <TableCell className="text-xs font-mono">{c.start_date}</TableCell>
-                <TableCell className="text-xs font-mono">{c.end_date}</TableCell>
-                <TableCell className="text-right tabular-nums font-semibold text-foreground">
+                <TableCell className="text-xs text-slate-600">{c.structure}</TableCell>
+                <TableCell className="text-xs font-mono text-slate-600">{c.start_date}</TableCell>
+                <TableCell className="text-xs font-mono text-slate-600">{c.end_date}</TableCell>
+                <TableCell className="text-right tabular-nums font-semibold text-slate-900">
                   {formatCurrency(c.wage)}
                 </TableCell>
                 <TableCell className="text-center">
-                  <Badge variant={c.status === 'Active' ? 'success' : 'danger'} className="text-[10px]">
+                  <Badge variant={c.status === 'Active' ? 'success' : 'danger'}>
                     {c.status}
                   </Badge>
                 </TableCell>

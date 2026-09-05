@@ -45,42 +45,38 @@ export default function TimeOff() {
   )
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4">
+      {/* Top Action Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Time Off & Leave Management</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Review employee leave requests, approve allocations, and track statutory leaves.
-          </p>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">Time Off Management</h1>
+          <p className="text-xs text-slate-500">Employee leave requests, approvals, and allocation balances.</p>
         </div>
-        <Button className="gap-2 font-medium">
-          <Plus className="h-4 w-4" /> New Leave Request
+        <Button className="gap-1.5 font-medium">
+          <Plus className="h-3.5 w-3.5" /> New Leave Request
         </Button>
       </div>
 
       {/* Leave Balances Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {mockBalances.map((b) => (
-          <Card key={b.type} className="hover:border-primary/40 transition-all">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+          <Card key={b.type}>
+            <CardContent className="p-3.5">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
                 {b.type}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-baseline justify-between">
-                <span className="text-2xl font-bold tabular-nums text-foreground">
+              </span>
+              <div className="flex items-baseline justify-between mt-1">
+                <span className="text-xl font-bold tabular-nums text-slate-900">
                   {b.remaining}{' '}
-                  <span className="text-xs font-normal text-muted-foreground">days left</span>
+                  <span className="text-xs font-normal text-slate-500">days left</span>
                 </span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-[11px] text-slate-500">
                   {b.used}/{b.allocated} used
                 </span>
               </div>
-              <div className="w-full bg-muted/60 h-1.5 rounded-full mt-3 overflow-hidden">
+              <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
                 <div
-                  className="bg-primary h-full rounded-full transition-all"
+                  className="bg-[#714b67] h-full rounded-full"
                   style={{ width: `${(b.used / b.allocated) * 100}%` }}
                 />
               </div>
@@ -89,21 +85,21 @@ export default function TimeOff() {
         ))}
       </div>
 
-      {/* Tabs for Requests and History */}
-      <Tabs defaultValue="requests" className="space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <TabsList>
-            <TabsTrigger value="requests">Pending & Recent Requests</TabsTrigger>
-            <TabsTrigger value="policy">Leave Policy & Rules</TabsTrigger>
+      {/* Requests Tabs */}
+      <Tabs defaultValue="requests" className="space-y-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <TabsList className="bg-slate-100 p-0.5 border border-slate-200">
+            <TabsTrigger value="requests" className="text-xs">Leave Requests</TabsTrigger>
+            <TabsTrigger value="policy" className="text-xs">Leave Policy</TabsTrigger>
           </TabsList>
 
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search requests..."
-              className="pl-9 h-8 text-xs"
+              className="pl-8 h-8 text-xs bg-white"
             />
           </div>
         </div>
@@ -115,7 +111,7 @@ export default function TimeOff() {
                 <TableRow>
                   <TableHead>Employee</TableHead>
                   <TableHead>Leave Type</TableHead>
-                  <TableHead>Duration</TableHead>
+                  <TableHead>Dates</TableHead>
                   <TableHead>Days</TableHead>
                   <TableHead>Reason</TableHead>
                   <TableHead className="text-center">Status</TableHead>
@@ -125,20 +121,18 @@ export default function TimeOff() {
               <TableBody>
                 {filteredRequests.map((req) => (
                   <TableRow key={req.id}>
-                    <TableCell className="font-medium text-foreground">
-                      <div>
-                        <div>{req.employee}</div>
-                        <span className="text-[11px] text-muted-foreground">{req.department}</span>
-                      </div>
+                    <TableCell className="font-medium text-slate-900">
+                      <div>{req.employee}</div>
+                      <span className="text-[10px] text-slate-500">{req.department}</span>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{req.leave_type}</TableCell>
-                    <TableCell className="text-xs font-mono">
-                      {req.start_date} to {req.end_date}
+                    <TableCell className="text-xs text-slate-600">{req.leave_type}</TableCell>
+                    <TableCell className="text-xs font-mono text-slate-600">
+                      {req.start_date} → {req.end_date}
                     </TableCell>
-                    <TableCell className="text-xs font-medium tabular-nums text-foreground">
+                    <TableCell className="text-xs font-medium tabular-nums text-slate-900">
                       {req.days} days
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground max-w-[180px] truncate">
+                    <TableCell className="text-xs text-slate-500 max-w-[180px] truncate">
                       {req.reason}
                     </TableCell>
                     <TableCell className="text-center">
@@ -150,7 +144,6 @@ export default function TimeOff() {
                             ? 'danger'
                             : 'warning'
                         }
-                        className="text-[10px]"
                       >
                         {req.status}
                       </Badge>
@@ -160,23 +153,23 @@ export default function TimeOff() {
                         <div className="flex items-center justify-end gap-1.5">
                           <Button
                             size="sm"
-                            variant="secondary"
+                            variant="teal"
                             onClick={() => handleAction(req.id, 'Approved')}
-                            className="h-7 px-2.5 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                            className="h-6 px-2 text-[11px]"
                           >
-                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Approve
+                            Approve
                           </Button>
                           <Button
                             size="sm"
-                            variant="secondary"
+                            variant="destructive"
                             onClick={() => handleAction(req.id, 'Refused')}
-                            className="h-7 px-2.5 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                            className="h-6 px-2 text-[11px]"
                           >
-                            <XCircle className="h-3.5 w-3.5 mr-1" /> Refuse
+                            Refuse
                           </Button>
                         </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground">Processed</span>
+                        <span className="text-xs text-slate-400">Processed</span>
                       )}
                     </TableCell>
                   </TableRow>
@@ -187,27 +180,24 @@ export default function TimeOff() {
         </TabsContent>
 
         <TabsContent value="policy">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-semibold">Statutory & Organizational Rules</CardTitle>
-              <CardDescription className="text-xs">
-                Company guidelines on encashment, notice period, and carryover
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 text-xs text-muted-foreground">
-              <div className="p-3 rounded-lg bg-muted/40 border border-border">
-                <div className="font-semibold text-foreground mb-1">Carryover Limit</div>
-                <p>Maximum 15 days of PTO may be carried over to the next financial year starting 1st April.</p>
+          <Card className="p-5 space-y-3">
+            <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
+              Company Leave Policy
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-600">
+              <div className="p-3 rounded bg-slate-50 border border-slate-100">
+                <span className="font-semibold text-slate-800 block mb-1">Carry Forward</span>
+                Up to 15 days of PTO can be carried over into the next fiscal year.
               </div>
-              <div className="p-3 rounded-lg bg-muted/40 border border-border">
-                <div className="font-semibold text-foreground mb-1">Notice Period for Extended Leaves</div>
-                <p>Leaves exceeding 3 consecutive business days require minimum 7 days advance manager notification.</p>
+              <div className="p-3 rounded bg-slate-50 border border-slate-100">
+                <span className="font-semibold text-slate-800 block mb-1">Notice Required</span>
+                Leaves longer than 3 days require 7-day prior supervisor intimation.
               </div>
-              <div className="p-3 rounded-lg bg-muted/40 border border-border">
-                <div className="font-semibold text-foreground mb-1">Medical Certificate</div>
-                <p>Sick leave lasting more than 2 consecutive days requires a certified physician note upload.</p>
+              <div className="p-3 rounded bg-slate-50 border border-slate-100">
+                <span className="font-semibold text-slate-800 block mb-1">Sick Leave Docs</span>
+                Medical certificate must be submitted for leaves exceeding 2 days.
               </div>
-            </CardContent>
+            </div>
           </Card>
         </TabsContent>
       </Tabs>

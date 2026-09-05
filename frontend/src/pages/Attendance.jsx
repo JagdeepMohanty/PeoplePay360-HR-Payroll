@@ -4,7 +4,7 @@ import {
   Search, Clock, CheckCircle2, AlertCircle, XCircle,
   Calendar, Download, UserCheck
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -49,91 +49,89 @@ export default function Attendance() {
   })
 
   const stats = [
-    { label: 'Present Today', count: records.filter((r) => r.status === 'Present').length, color: 'text-emerald-400' },
-    { label: 'Late Arrivals', count: records.filter((r) => r.status === 'Late').length, color: 'text-amber-400' },
-    { label: 'On Leave', count: records.filter((r) => r.status === 'On Leave').length, color: 'text-blue-400' },
-    { label: 'Absent', count: records.filter((r) => r.status === 'Absent').length, color: 'text-rose-400' },
+    { label: 'Present Today', count: records.filter((r) => r.status === 'Present').length, color: 'text-emerald-700', bg: 'bg-emerald-50' },
+    { label: 'Late Arrivals', count: records.filter((r) => r.status === 'Late').length, color: 'text-amber-700', bg: 'bg-amber-50' },
+    { label: 'On Leave', count: records.filter((r) => r.status === 'On Leave').length, color: 'text-sky-700', bg: 'bg-sky-50' },
+    { label: 'Absent', count: records.filter((r) => r.status === 'Absent').length, color: 'text-rose-700', bg: 'bg-rose-50' },
   ]
 
   const getStatusBadge = (status) => {
     switch (status) {
       case 'Present':
-        return <Badge variant="success" className="text-[10px]">Present</Badge>
+        return <Badge variant="success">Present</Badge>
       case 'Late':
-        return <Badge variant="warning" className="text-[10px]">Late</Badge>
+        return <Badge variant="warning">Late</Badge>
       case 'On Leave':
-        return <Badge variant="info" className="text-[10px]">On Leave</Badge>
+        return <Badge variant="info">On Leave</Badge>
       case 'Absent':
-        return <Badge variant="danger" className="text-[10px]">Absent</Badge>
+        return <Badge variant="danger">Absent</Badge>
       default:
-        return <Badge variant="outline" className="text-[10px]">{status}</Badge>
+        return <Badge variant="outline">{status}</Badge>
     }
   }
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4">
+      {/* Top Action Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Attendance & Biometrics</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Real-time biometric logs, late check-in records, and shift calculations.
-          </p>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">Attendance & Shifts</h1>
+          <p className="text-xs text-slate-500">Live biometric punch-in logs and overtime tracking.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2 text-xs">
-            <Download className="h-3.5 w-3.5" /> Export Report
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8">
+          <Download className="h-3.5 w-3.5" /> Export Attendance
+        </Button>
       </div>
 
-      {/* Summary Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Summary KPI Pills */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {stats.map((s) => (
           <Card key={s.label}>
-            <CardContent className="p-4 flex items-center justify-between">
+            <CardContent className="p-3.5 flex items-center justify-between">
               <div>
-                <span className="text-xs text-muted-foreground">{s.label}</span>
-                <div className={`text-2xl font-bold tabular-nums ${s.color}`}>
+                <span className="text-[11px] font-medium text-slate-500">{s.label}</span>
+                <div className={`text-xl font-bold tabular-nums ${s.color}`}>
                   {s.count}
                 </div>
               </div>
-              <UserCheck className={`h-6 w-6 opacity-20 ${s.color}`} />
+              <div className={`p-2 rounded ${s.bg}`}>
+                <UserCheck className={`h-4 w-4 ${s.color}`} />
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card/60 p-3 rounded-xl border border-border">
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Filter by employee or dept..."
-            className="pl-9 h-9 text-xs"
+            placeholder="Search employee or department..."
+            className="pl-8 h-8 text-xs bg-white"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+        <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto">
           {['All', 'Present', 'Late', 'On Leave', 'Absent'].map((st) => (
-            <Button
+            <button
               key={st}
-              variant={statusFilter === st ? 'secondary' : 'ghost'}
-              size="sm"
               onClick={() => setStatusFilter(st)}
-              className={`text-xs h-8 px-3 rounded-lg ${
-                statusFilter === st ? 'bg-primary/15 text-primary border border-primary/20' : ''
+              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                statusFilter === st
+                  ? 'bg-[#714b67] text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
               {st}
-            </Button>
+            </button>
           ))}
         </div>
       </div>
 
-      {/* Attendance Table */}
+      {/* Table */}
       <Card className="p-0 overflow-hidden">
         <Table>
           <TableHeader>
@@ -150,14 +148,14 @@ export default function Attendance() {
           <TableBody>
             {filtered.map((rec) => (
               <TableRow key={rec.id}>
-                <TableCell className="font-medium text-foreground">{rec.employee}</TableCell>
-                <TableCell className="text-muted-foreground text-xs">{rec.department}</TableCell>
-                <TableCell className="text-xs font-mono">{rec.check_in}</TableCell>
-                <TableCell className="text-xs font-mono">{rec.check_out}</TableCell>
-                <TableCell className="text-xs font-mono font-medium text-foreground">
+                <TableCell className="font-medium text-slate-900">{rec.employee}</TableCell>
+                <TableCell className="text-slate-500 text-xs">{rec.department}</TableCell>
+                <TableCell className="text-xs font-mono text-slate-700">{rec.check_in}</TableCell>
+                <TableCell className="text-xs font-mono text-slate-700">{rec.check_out}</TableCell>
+                <TableCell className="text-xs font-mono font-medium text-slate-900">
                   {rec.worked_hours}
                 </TableCell>
-                <TableCell className="text-xs font-mono text-muted-foreground">
+                <TableCell className="text-xs font-mono text-slate-500">
                   {rec.overtime}
                 </TableCell>
                 <TableCell className="text-right">

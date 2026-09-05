@@ -3,27 +3,31 @@ import { cva } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium transition-colors select-none",
   {
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/80",
+          "border-transparent bg-primary text-primary-foreground shadow-none",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "border-transparent bg-slate-100 text-slate-700",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
-        outline: "text-foreground",
+          "border-transparent bg-destructive text-destructive-foreground",
+        outline: "border-slate-200 bg-white text-slate-700",
         success:
-          "border-emerald-500/20 bg-emerald-500/10 text-emerald-400 font-medium",
+          "border-emerald-200/80 bg-emerald-50 text-emerald-700",
         warning:
-          "border-amber-500/20 bg-amber-500/10 text-amber-400 font-medium",
+          "border-amber-200/80 bg-amber-50 text-amber-800",
         danger:
-          "border-red-500/20 bg-red-500/10 text-red-400 font-medium",
+          "border-red-200/80 bg-red-50 text-red-700",
         info:
-          "border-blue-500/20 bg-blue-500/10 text-blue-400 font-medium",
+          "border-sky-200/80 bg-sky-50 text-sky-700",
+        odoo:
+          "border-[#714b67]/20 bg-[#714b67]/10 text-[#714b67]",
+        odooTeal:
+          "border-teal-200 bg-teal-50 text-teal-700",
         muted:
-          "border-border bg-muted/50 text-muted-foreground font-normal",
+          "border-slate-200 bg-slate-50 text-slate-500",
       },
     },
     defaultVariants: {

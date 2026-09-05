@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Separator } from '@/components/ui/separator'
 
 export default function EmployeeDetail() {
   const { id } = useParams()
@@ -47,148 +46,147 @@ export default function EmployeeDetail() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Back Button and Actions Header */}
-      <div className="flex items-center justify-between">
-        <Link to="/employees">
-          <Button variant="ghost" size="sm" className="gap-2 text-xs">
-            <ArrowLeft className="h-4 w-4" /> Back to Employees
-          </Button>
-        </Link>
+    <div className="space-y-4 max-w-5xl mx-auto">
+      {/* Odoo Form Action Bar */}
+      <div className="flex items-center justify-between pb-2 border-b border-slate-200">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="text-xs">
-            Edit Profile
+          <Link to="/employees">
+            <Button variant="outline" size="sm" className="gap-1 text-xs h-7">
+              <ArrowLeft className="h-3.5 w-3.5" /> Back
+            </Button>
+          </Link>
+          <Button size="sm" className="h-7 text-xs">
+            Edit
           </Button>
+        </div>
+
+        {/* Odoo Smart Buttons */}
+        <div className="flex items-center gap-1.5">
+          <Link to="/timeoff">
+            <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs gap-2 border-slate-200">
+              <Umbrella className="h-3.5 w-3.5 text-[#714b67]" />
+              <div className="text-left">
+                <span className="text-[10px] text-slate-500 block leading-none">Time Off</span>
+                <span className="font-semibold text-slate-900 leading-none">14 Days</span>
+              </div>
+            </Button>
+          </Link>
+          <Link to="/attendance">
+            <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs gap-2 border-slate-200">
+              <Clock className="h-3.5 w-3.5 text-teal-600" />
+              <div className="text-left">
+                <span className="text-[10px] text-slate-500 block leading-none">Attendance</span>
+                <span className="font-semibold text-slate-900 leading-none">98.5%</span>
+              </div>
+            </Button>
+          </Link>
           <Link to="/contracts">
-            <Button size="sm" className="gap-1.5 text-xs">
-              <FileText className="h-3.5 w-3.5" /> View Contract
+            <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs gap-2 border-slate-200">
+              <FileText className="h-3.5 w-3.5 text-blue-600" />
+              <div className="text-left">
+                <span className="text-[10px] text-slate-500 block leading-none">Contracts</span>
+                <span className="font-semibold text-slate-900 leading-none">1 Active</span>
+              </div>
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Hero Profile Card */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
-              <Avatar className="h-20 w-20 border-2 border-primary/30 shadow-md">
-                <AvatarFallback className="bg-primary/15 text-primary text-xl font-bold">
-                  {getInitials(employee.name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="space-y-1">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-xl font-bold tracking-tight text-foreground">
-                    {employee.name}
-                  </h1>
-                  <Badge variant="success" className="text-xs">
-                    {employee.status || 'Active'}
-                  </Badge>
-                </div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  {employee.job_position} · {employee.department}
-                </p>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
-                  <span className="flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5 text-primary" />
-                    {employee.work_email}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Phone className="h-3.5 w-3.5 text-primary" />
-                    {employee.work_phone}
-                  </span>
-                </div>
+      {/* Main Odoo Sheet */}
+      <Card className="p-6">
+        {/* Header with Photo & Name */}
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-5 pb-6 border-b border-slate-100">
+          <div className="flex items-center gap-4">
+            <Avatar className="h-16 w-16 border border-slate-200">
+              <AvatarFallback className="bg-[#714b67]/10 text-[#714b67] text-lg font-bold">
+                {getInitials(employee.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-slate-900">{employee.name}</h2>
+                <Badge variant="success" className="text-[10px]">
+                  {employee.status || 'Active'}
+                </Badge>
               </div>
-            </div>
-
-            {/* Quick Stat Pills */}
-            <div className="grid grid-cols-3 gap-3 w-full sm:w-auto">
-              <div className="p-3 rounded-lg bg-muted/40 border border-border text-center">
-                <span className="text-[11px] text-muted-foreground block">Leaves Left</span>
-                <span className="text-base font-bold text-foreground tabular-nums">14 Days</span>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/40 border border-border text-center">
-                <span className="text-[11px] text-muted-foreground block">Attendance</span>
-                <span className="text-base font-bold text-emerald-400 tabular-nums">98.5%</span>
-              </div>
-              <div className="p-3 rounded-lg bg-muted/40 border border-border text-center">
-                <span className="text-[11px] text-muted-foreground block">Monthly Wage</span>
-                <span className="text-base font-bold text-primary tabular-nums">₹1.75L</span>
+              <p className="text-xs font-medium text-slate-600">
+                {employee.job_position} · {employee.department}
+              </p>
+              <div className="flex items-center gap-4 text-xs text-slate-500 pt-1">
+                <span className="flex items-center gap-1">
+                  <Mail className="h-3 w-3 text-slate-400" /> {employee.work_email}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Phone className="h-3 w-3 text-slate-400" /> {employee.work_phone}
+                </span>
               </div>
             </div>
           </div>
-        </CardContent>
+        </div>
+
+        {/* Form Fields 2-Column Notebook */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6">
+          {/* Column 1: Work Information */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-1.5">
+              Work Information
+            </h3>
+            <div className="space-y-2 text-xs">
+              <div className="grid grid-cols-3 py-1 border-b border-slate-50">
+                <span className="text-slate-500">Department</span>
+                <span className="col-span-2 font-medium text-slate-900">{employee.department}</span>
+              </div>
+              <div className="grid grid-cols-3 py-1 border-b border-slate-50">
+                <span className="text-slate-500">Job Position</span>
+                <span className="col-span-2 font-medium text-slate-900">{employee.job_position}</span>
+              </div>
+              <div className="grid grid-cols-3 py-1 border-b border-slate-50">
+                <span className="text-slate-500">Manager</span>
+                <span className="col-span-2 font-medium text-slate-900">{employee.manager_name || 'Vikram Mehta'}</span>
+              </div>
+              <div className="grid grid-cols-3 py-1 border-b border-slate-50">
+                <span className="text-slate-500">Work Location</span>
+                <span className="col-span-2 font-medium text-slate-900">Bangalore HQ</span>
+              </div>
+              <div className="grid grid-cols-3 py-1">
+                <span className="text-slate-500">Working Hours</span>
+                <span className="col-span-2 font-medium text-slate-900">Standard 40 hours/week</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Column 2: Compensation & Payroll */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-1.5">
+              Payroll & Contract Details
+            </h3>
+            <div className="space-y-2 text-xs">
+              <div className="grid grid-cols-3 py-1 border-b border-slate-50">
+                <span className="text-slate-500">Contract Type</span>
+                <span className="col-span-2 font-medium text-slate-900">{employee.contract_type || 'Permanent'}</span>
+              </div>
+              <div className="grid grid-cols-3 py-1 border-b border-slate-50">
+                <span className="text-slate-500">Monthly Wage</span>
+                <span className="col-span-2 font-semibold text-[#714b67] tabular-nums">
+                  ₹{employee.wage ? employee.wage.toLocaleString('en-IN') : '1,75,000'}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 py-1 border-b border-slate-50">
+                <span className="text-slate-500">PF Number</span>
+                <span className="col-span-2 font-mono text-slate-700">101293847562</span>
+              </div>
+              <div className="grid grid-cols-3 py-1 border-b border-slate-50">
+                <span className="text-slate-500">Bank Account</span>
+                <span className="col-span-2 font-mono text-slate-700">HDFC •••• 4829</span>
+              </div>
+              <div className="grid grid-cols-3 py-1">
+                <span className="text-slate-500">Joining Date</span>
+                <span className="col-span-2 font-medium text-slate-900">{employee.date_joined || '12 Jan 2023'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </Card>
-
-      {/* Detail Panels */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Work Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">Work Information</CardTitle>
-            <CardDescription className="text-xs">
-              Organizational hierarchy and role parameters
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 pt-0 text-xs">
-            <div className="flex justify-between py-1.5 border-b border-border/50">
-              <span className="text-muted-foreground">Department</span>
-              <span className="font-medium text-foreground">{employee.department}</span>
-            </div>
-            <div className="flex justify-between py-1.5 border-b border-border/50">
-              <span className="text-muted-foreground">Job Position</span>
-              <span className="font-medium text-foreground">{employee.job_position}</span>
-            </div>
-            <div className="flex justify-between py-1.5 border-b border-border/50">
-              <span className="text-muted-foreground">Manager</span>
-              <span className="font-medium text-foreground">{employee.manager_name || 'Vikram Mehta'}</span>
-            </div>
-            <div className="flex justify-between py-1.5 border-b border-border/50">
-              <span className="text-muted-foreground">Work Location</span>
-              <span className="font-medium text-foreground">Bangalore Tech Hub (HQ)</span>
-            </div>
-            <div className="flex justify-between py-1.5">
-              <span className="text-muted-foreground">Joining Date</span>
-              <span className="font-medium text-foreground">{employee.date_joined || '12 Jan 2023'}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Compensation & Contract */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">Compensation & Compliance</CardTitle>
-            <CardDescription className="text-xs">
-              Payroll structure and statutory identifiers
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 pt-0 text-xs">
-            <div className="flex justify-between py-1.5 border-b border-border/50">
-              <span className="text-muted-foreground">Contract Type</span>
-              <span className="font-medium text-foreground">{employee.contract_type || 'Full-time'}</span>
-            </div>
-            <div className="flex justify-between py-1.5 border-b border-border/50">
-              <span className="text-muted-foreground">Monthly Base Salary</span>
-              <span className="font-semibold text-primary tabular-nums">
-                ₹{employee.wage ? employee.wage.toLocaleString('en-IN') : '1,75,000'}
-              </span>
-            </div>
-            <div className="flex justify-between py-1.5 border-b border-border/50">
-              <span className="text-muted-foreground">PF / UAN Number</span>
-              <span className="font-mono text-muted-foreground">101293847562</span>
-            </div>
-            <div className="flex justify-between py-1.5 border-b border-border/50">
-              <span className="text-muted-foreground">ESI Applicable</span>
-              <Badge variant="outline" className="text-[10px]">Exempt (Above Ceiling)</Badge>
-            </div>
-            <div className="flex justify-between py-1.5">
-              <span className="text-muted-foreground">Bank Account</span>
-              <span className="font-mono text-foreground">HDFC •••• 4829</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   )
 }

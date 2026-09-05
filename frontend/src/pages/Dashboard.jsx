@@ -15,7 +15,6 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import client from '../api/client'
 
-// Fallback high-fidelity sample data matching Excalidraw mockup
 const fallbackDeptData = [
   { department: 'Engineering', gross: 4200000, net: 3450000, employees: 34 },
   { department: 'Sales', gross: 2800000, net: 2320000, employees: 22 },
@@ -56,87 +55,89 @@ export default function Dashboard() {
 
   const kpis = [
     {
-      title: 'Total Monthly Payroll',
+      title: 'Monthly Gross Payroll',
       value: formatCurrency(apiData?.total_payroll || 11250000),
-      trend: '+3.4% from last period',
+      trend: '+3.4% vs last period',
       icon: DollarSign,
-      color: 'text-primary',
+      iconBg: 'bg-[#714b67]/10 text-[#714b67]',
     },
     {
       title: 'Active Employees',
       value: (apiData?.active_employees || 92).toString(),
-      trend: '4 onboarded this month',
+      trend: '4 joined this month',
       icon: Users,
-      color: 'text-emerald-400',
+      iconBg: 'bg-teal-50 text-teal-700',
     },
     {
       title: 'Average Net Salary',
       value: formatCurrency(apiData?.avg_salary || 102170),
-      trend: 'Stable across bands',
+      trend: 'Standard across grades',
       icon: TrendingUp,
-      color: 'text-blue-400',
+      iconBg: 'bg-blue-50 text-blue-700',
     },
     {
       title: 'Pending Exceptions',
-      value: '3 Items',
-      trend: 'Requires review before run',
+      value: '3 Actions',
+      trend: 'Requires sign-off before payout',
       icon: AlertTriangle,
-      color: 'text-amber-400',
+      iconBg: 'bg-amber-50 text-amber-700',
       badge: 'Attention',
     },
   ]
 
   return (
-    <div className="space-y-6">
-      {/* Top Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-5">
+      {/* Top Action Bar (Odoo Style) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-200/80">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Payroll & Workforce Overview
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">
+            Payroll Dashboard
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Real-time biometric attendance, salary disbursements, and compliance metrics.
+          <p className="text-xs text-slate-500 mt-0.5">
+            OXP Enterprise compensation metrics, biometric sync, and payout cycles.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Badge variant="outline" className="hidden sm:inline-flex gap-1.5 py-1.5 px-3 bg-muted/30">
-            <Calendar className="h-3.5 w-3.5 text-primary" />
-            <span>September 2026</span>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="hidden sm:inline-flex gap-1.5 py-1 px-2.5 bg-white text-slate-600">
+            <Calendar className="h-3.5 w-3.5 text-[#714b67]" />
+            <span>Cycle: September 2026</span>
           </Badge>
           <Link to="/payruns">
-            <Button className="gap-2 shadow-sm font-medium">
-              <Sparkles className="h-4 w-4" />
-              Process New Payrun
+            <Button className="gap-1.5 font-medium">
+              <Sparkles className="h-3.5 w-3.5" />
+              New Payrun Batch
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {kpis.map((kpi) => {
           const Icon = kpi.icon
           return (
-            <Card key={kpi.title} className="hover:border-primary/40 transition-all">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  {kpi.title}
-                </CardTitle>
-                <div className={`p-2 rounded-lg bg-muted/40 ${kpi.color}`}>
-                  <Icon className="h-4 w-4" />
+            <Card key={kpi.title} className="hover:border-slate-300 transition-colors">
+              <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    {kpi.title}
+                  </span>
+                  <div className={`p-1.5 rounded ${kpi.iconBg}`}>
+                    <Icon className="h-4 w-4" />
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold tracking-tight tabular-nums text-foreground">
-                  {kpi.value}
-                </div>
-                <div className="flex items-center justify-between mt-2">
-                  <p className="text-xs text-muted-foreground">{kpi.trend}</p>
-                  {kpi.badge && (
-                    <Badge variant="warning" className="text-[10px] px-1.5 py-0">
-                      {kpi.badge}
-                    </Badge>
-                  )}
+                <div>
+                  <div className="text-2xl font-bold tracking-tight tabular-nums text-slate-900">
+                    {kpi.value}
+                  </div>
+                  <div className="flex items-center justify-between mt-1 text-xs text-slate-500">
+                    <span>{kpi.trend}</span>
+                    {kpi.badge && (
+                      <Badge variant="warning" className="text-[10px] px-1.5 py-0">
+                        {kpi.badge}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -144,45 +145,45 @@ export default function Dashboard() {
         })}
       </div>
 
-      {/* Analytics Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
-        {/* Department Gross vs Net Comparison */}
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
+        {/* Department Gross vs Net */}
         <Card className="lg:col-span-4">
-          <CardHeader>
+          <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-base font-semibold">
-                  Department Cost Breakdown
+                <CardTitle className="text-sm font-semibold text-slate-900">
+                  Department Payroll Breakdown
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Gross payroll vs Net disbursements by department
+                  Gross budgeted payroll vs Net paid to bank
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-4 text-xs">
+              <div className="flex items-center gap-3 text-xs">
                 <div className="flex items-center gap-1.5">
-                  <div className="h-2.5 w-2.5 rounded-full bg-primary" />
-                  <span className="text-muted-foreground">Gross</span>
+                  <div className="h-2.5 w-2.5 rounded-sm bg-[#714b67]" />
+                  <span className="text-slate-600 text-[11px]">Gross</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-                  <span className="text-muted-foreground">Net</span>
+                  <div className="h-2.5 w-2.5 rounded-sm bg-[#00a09d]" />
+                  <span className="text-slate-600 text-[11px]">Net</span>
                 </div>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="h-[280px] w-full pt-4">
+          <CardContent className="h-[250px] w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={fallbackDeptData} margin={{ top: 0, right: 10, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <BarChart data={fallbackDeptData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="2 2" stroke="#f1f5f9" vertical={false} />
                 <XAxis
                   dataKey="department"
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="#94a3b8"
                   fontSize={11}
                   tickLine={false}
-                  axisLine={false}
+                  axisLine={{ stroke: '#e2e8f0' }}
                 />
                 <YAxis
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="#94a3b8"
                   fontSize={11}
                   tickLine={false}
                   axisLine={false}
@@ -190,49 +191,50 @@ export default function Dashboard() {
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    borderColor: 'hsl(var(--border))',
-                    borderRadius: '8px',
-                    fontSize: '12px',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
                   }}
                   formatter={(val) => [formatCurrency(val), '']}
                 />
-                <Bar dataKey="gross" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={36} />
-                <Bar dataKey="net" fill="#34d399" radius={[4, 4, 0, 0]} maxBarSize={36} />
+                <Bar dataKey="gross" fill="#714b67" radius={[3, 3, 0, 0]} maxBarSize={32} />
+                <Bar dataKey="net" fill="#00a09d" radius={[3, 3, 0, 0]} maxBarSize={32} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* 6-Month Trend Card */}
+        {/* 6-Month Trajectory Area */}
         <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">
-              Disbursement Trajectory
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-slate-900">
+              Disbursement Trend
             </CardTitle>
             <CardDescription className="text-xs">
-              Last 6-month aggregate company payroll expenses
+              Last 6 cycles aggregate company expenditure
             </CardDescription>
           </CardHeader>
-          <CardContent className="h-[280px] w-full pt-4">
+          <CardContent className="h-[250px] w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={fallbackTrendData} margin={{ top: 0, right: 10, left: 10, bottom: 0 }}>
+              <AreaChart data={fallbackTrendData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="payrollGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.0} />
+                  <linearGradient id="odooGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#714b67" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#714b67" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <CartesianGrid strokeDasharray="2 2" stroke="#f1f5f9" vertical={false} />
                 <XAxis
                   dataKey="month"
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="#94a3b8"
                   fontSize={11}
                   tickLine={false}
-                  axisLine={false}
+                  axisLine={{ stroke: '#e2e8f0' }}
                 />
                 <YAxis
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="#94a3b8"
                   fontSize={11}
                   tickLine={false}
                   axisLine={false}
@@ -240,20 +242,21 @@ export default function Dashboard() {
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    borderColor: 'hsl(var(--border))',
-                    borderRadius: '8px',
-                    fontSize: '12px',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
                   }}
-                  formatter={(val) => [formatCurrency(val), 'Monthly Total']}
+                  formatter={(val) => [formatCurrency(val), 'Payroll Total']}
                 />
                 <Area
                   type="monotone"
                   dataKey="total"
-                  stroke="hsl(var(--primary))"
+                  stroke="#714b67"
                   strokeWidth={2}
                   fillOpacity={1}
-                  fill="url(#payrollGradient)"
+                  fill="url(#odooGradient)"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -261,100 +264,95 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Department Summary Table & Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Department Table */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between">
+      {/* Table & Checklist */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Department Overview Table */}
+        <Card className="lg:col-span-2 p-0 overflow-hidden">
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
             <div>
-              <CardTitle className="text-base font-semibold">Department Overview</CardTitle>
-              <CardDescription className="text-xs">
-                Headcount and monthly gross totals per team
-              </CardDescription>
+              <h3 className="text-sm font-semibold text-slate-900">Department Summary</h3>
+              <p className="text-xs text-slate-500">Staff distribution and budget allocation</p>
             </div>
             <Link to="/employees">
-              <Button variant="ghost" size="sm" className="text-xs gap-1">
-                View All <ChevronRight className="h-3.5 w-3.5" />
+              <Button variant="ghost" size="sm" className="text-xs gap-1 h-7">
+                View Staff <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Department</TableHead>
-                  <TableHead className="text-center">Staff Count</TableHead>
-                  <TableHead className="text-right">Monthly Gross</TableHead>
-                  <TableHead className="text-right">Status</TableHead>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Department</TableHead>
+                <TableHead className="text-center">Employees</TableHead>
+                <TableHead className="text-right">Monthly Gross</TableHead>
+                <TableHead className="text-right">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {fallbackDeptData.map((d) => (
+                <TableRow key={d.department}>
+                  <TableCell className="font-medium text-slate-900">
+                    {d.department}
+                  </TableCell>
+                  <TableCell className="text-center text-slate-600">
+                    {d.employees}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums font-semibold text-slate-900">
+                    {formatCurrency(d.gross)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Badge variant="success" className="text-[10px]">
+                      Ready
+                    </Badge>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {fallbackDeptData.map((d) => (
-                  <TableRow key={d.department}>
-                    <TableCell className="font-medium text-foreground">
-                      {d.department}
-                    </TableCell>
-                    <TableCell className="text-center text-muted-foreground">
-                      {d.employees} members
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums font-semibold text-foreground">
-                      {formatCurrency(d.gross)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant="success" className="text-[10px]">
-                        Up to Date
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
+              ))}
+            </TableBody>
+          </Table>
         </Card>
 
-        {/* Actionable Alerts Card */}
-        <Card className="space-y-4">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-400" />
+        {/* Pre-payrun Checklist */}
+        <Card className="p-4 space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
               Pre-Payrun Checklist
-            </CardTitle>
-            <CardDescription className="text-xs">
-              System flags detected for the upcoming cycle
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 pt-0">
-            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs space-y-1">
-              <div className="font-semibold text-amber-400">2 Unapproved Time Offs</div>
-              <p className="text-muted-foreground text-[11px]">
-                Pending manager signoff in Engineering and Operations.
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">Tasks required before executing batch</p>
+          </div>
+
+          <div className="space-y-2 text-xs">
+            <div className="p-2.5 rounded bg-amber-50/70 border border-amber-200/80 space-y-1">
+              <div className="font-semibold text-amber-900">2 Pending Time-off Requests</div>
+              <p className="text-[11px] text-amber-800/80">
+                Awaiting approval in Engineering and Operations.
               </p>
-              <Link to="/timeoff" className="inline-block pt-1 text-amber-400 hover:underline font-medium">
-                Resolve Requests →
+              <Link to="/timeoff" className="inline-block pt-0.5 text-xs text-[#714b67] font-semibold hover:underline">
+                Approve Requests →
               </Link>
             </div>
 
-            <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs space-y-1">
-              <div className="font-semibold text-blue-400">1 Contract Renewal Due</div>
-              <p className="text-muted-foreground text-[11px]">
-                Contract for Senior React Engineer expires on 30 Sep 2026.
+            <div className="p-2.5 rounded bg-blue-50/70 border border-blue-200/80 space-y-1">
+              <div className="font-semibold text-blue-900">1 Contract Due for Revision</div>
+              <p className="text-[11px] text-blue-800/80">
+                Fixed-term engineer contract expires this cycle.
               </p>
-              <Link to="/contracts" className="inline-block pt-1 text-blue-400 hover:underline font-medium">
+              <Link to="/contracts" className="inline-block pt-0.5 text-xs text-[#714b67] font-semibold hover:underline">
                 Review Contract →
               </Link>
             </div>
 
-            <div className="p-3 rounded-lg bg-muted/40 border border-border text-xs flex items-center justify-between">
+            <div className="p-2.5 rounded bg-slate-50 border border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                 <div>
-                  <div className="font-medium text-foreground">Biometric Logs Synced</div>
-                  <p className="text-[11px] text-muted-foreground">OXP Terminal device 01</p>
+                  <div className="font-medium text-slate-800">Biometrics Synced</div>
+                  <span className="text-[10px] text-slate-500">Device Terminal 01</span>
                 </div>
               </div>
-              <Badge variant="outline" className="text-[10px]">Verified</Badge>
+              <Badge variant="outline" className="text-[10px]">Active</Badge>
             </div>
-          </CardContent>
+          </div>
         </Card>
       </div>
     </div>
