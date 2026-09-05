@@ -277,126 +277,49 @@ export function scanPayrollIssues({ employees, contracts, attendance, timeOffReq
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// INITIAL SEED DATA
+// ACTION-BASED DATA STATE (No hardcoded mock data)
+// All records are dynamic, loaded from SQLite via FastAPI & populated via actions
 // ─────────────────────────────────────────────────────────────────────────────
-const initialEmployees = [
-  { id: 1, name: 'Aarav Sharma',  department: 'Engineering', job_position: 'Tech Lead',             work_email: 'aarav.sharma@oxp.com',  work_phone: '+91 98765 43210', manager_name: 'Vikram Mehta', contract_type: 'Full-time Permanent', wage: 175000, date_joined: '2023-01-12', status: 'Active' },
-  { id: 2, name: 'Priya Patel',   department: 'HR',          job_position: 'HR Manager',             work_email: 'priya.patel@oxp.com',   work_phone: '+91 98765 43211', manager_name: 'Vikram Mehta', contract_type: 'Full-time Permanent', wage: 125000, date_joined: '2023-04-01', status: 'Active' },
-  { id: 3, name: 'Rohan Verma',   department: 'Sales',       job_position: 'Account Executive',      work_email: 'rohan.verma@oxp.com',   work_phone: '+91 98765 43212', manager_name: 'Priya Patel',  contract_type: 'Full-time Permanent', wage: 95000,  date_joined: '2024-02-15', status: 'Active' },
-  { id: 4, name: 'Ananya Iyer',   department: 'Engineering', job_position: 'Frontend Engineer',      work_email: 'ananya.iyer@oxp.com',   work_phone: '+91 98765 43213', manager_name: 'Aarav Sharma', contract_type: 'Full-time Permanent', wage: 110000, date_joined: '2024-06-01', status: 'Active' },
-  { id: 5, name: 'Vikram Singh',  department: 'Operations',  job_position: 'Operations Specialist',  work_email: 'vikram.singh@oxp.com',  work_phone: '+91 98765 43214', manager_name: 'Priya Patel',  contract_type: 'Full-time Permanent', wage: 85000,  date_joined: '2025-01-10', status: 'On Leave' },
-  { id: 6, name: 'Sneha Reddy',   department: 'Marketing',   job_position: 'Growth Lead',            work_email: 'sneha.reddy@oxp.com',   work_phone: '+91 98765 43215', manager_name: 'Priya Patel',  contract_type: 'Full-time Permanent', wage: 120000, date_joined: '2025-03-01', status: 'Active' },
-]
-
-const initialContracts = [
-  { id: 1, employee_id: 1, contract_ref: 'CNT-2023-001', employee: 'Aarav Sharma',  department: 'Engineering', job_position: 'Tech Lead',            start_date: '2023-01-12', end_date: 'Open-ended', wage: 175000, structure: 'Regular Tech Band 4',   status: 'Active' },
-  { id: 2, employee_id: 2, contract_ref: 'CNT-2023-014', employee: 'Priya Patel',   department: 'HR',          job_position: 'HR Manager',            start_date: '2023-04-01', end_date: 'Open-ended', wage: 125000, structure: 'Executive HR Band 3',   status: 'Active' },
-  { id: 3, employee_id: 3, contract_ref: 'CNT-2024-008', employee: 'Rohan Verma',   department: 'Sales',       job_position: 'Account Executive',     start_date: '2024-02-15', end_date: 'Open-ended', wage: 95000,  structure: 'Sales Base + Incentive', status: 'Active' },
-  { id: 4, employee_id: 4, contract_ref: 'CNT-2024-022', employee: 'Ananya Iyer',   department: 'Engineering', job_position: 'Frontend Engineer',     start_date: '2024-06-01', end_date: 'Open-ended', wage: 110000, structure: 'Regular Tech Band 4',   status: 'Active' },
-  { id: 5, employee_id: 5, contract_ref: 'CNT-2025-003', employee: 'Vikram Singh',  department: 'Operations',  job_position: 'Operations Specialist', start_date: '2025-01-10', end_date: '2026-12-31', wage: 85000,  structure: 'Operations Band 2',     status: 'Active' },
-  { id: 6, employee_id: 6, contract_ref: 'CNT-2025-019', employee: 'Sneha Reddy',   department: 'Marketing',   job_position: 'Growth Lead',           start_date: '2025-03-01', end_date: 'Open-ended', wage: 120000, structure: 'Regular Tech Band 4',   status: 'Active' },
-]
-
-const initialAttendance = [
-  { id: 1, employee: 'Aarav Sharma',  department: 'Engineering', date: '2026-09-05', check_in: '09:02 AM', check_out: '06:15 PM', worked_hours: '8h 45m', overtime: '0h 45m', status: 'Present'  },
-  { id: 2, employee: 'Priya Patel',   department: 'HR',          date: '2026-09-05', check_in: '09:42 AM', check_out: '06:00 PM', worked_hours: '7h 48m', overtime: '-',      status: 'Late'     },
-  { id: 3, employee: 'Rohan Verma',   department: 'Sales',       date: '2026-09-05', check_in: '08:55 AM', check_out: '05:30 PM', worked_hours: '8h 35m', overtime: '-',      status: 'Present'  },
-  { id: 4, employee: 'Ananya Iyer',   department: 'Engineering', date: '2026-09-05', check_in: '09:00 AM', check_out: '06:30 PM', worked_hours: '9h 00m', overtime: '1h 00m', status: 'Present'  },
-  { id: 5, employee: 'Vikram Singh',  department: 'Operations',  date: '2026-09-05', check_in: '-',        check_out: '-',        worked_hours: '0h',     overtime: '-',      status: 'On Leave' },
-  { id: 6, employee: 'Sneha Reddy',   department: 'Marketing',   date: '2026-09-05', check_in: '10:15 AM', check_out: '07:00 PM', worked_hours: '8h 15m', overtime: '-',      status: 'Late'     },
-  { id: 7, employee: 'Sneha Reddy',   department: 'Marketing',   date: '2026-09-05', check_in: '10:20 AM', check_out: '07:00 PM', worked_hours: '8h 00m', overtime: '-',      status: 'Late'     },
-  { id: 8, employee: 'Priya Patel',   department: 'HR',          date: '2026-09-04', check_in: '09:50 AM', check_out: '06:00 PM', worked_hours: '7h 30m', overtime: '-',      status: 'Late'     },
-  { id: 9, employee: 'Priya Patel',   department: 'HR',          date: '2026-09-03', check_in: '10:05 AM', check_out: '06:00 PM', worked_hours: '7h 25m', overtime: '-',      status: 'Late'     },
-]
-
-const initialTimeOffRequests = [
-  { id: 1, employee: 'Vikram Singh', department: 'Operations', leave_type: 'Paid Time Off (PTO)', start_date: '2026-09-04', end_date: '2026-09-08', days: 4, reason: 'Family function',    status: 'Pending'  },
-  { id: 2, employee: 'Sneha Reddy',  department: 'Marketing',  leave_type: 'Sick Leave',           start_date: '2026-09-02', end_date: '2026-09-03', days: 2, reason: 'Viral fever',       status: 'Approved' },
-  { id: 3, employee: 'Rohan Verma',  department: 'Sales',      leave_type: 'Casual Leave',         start_date: '2026-09-15', end_date: '2026-09-16', days: 2, reason: 'Personal errands',  status: 'Pending'  },
-  { id: 4, employee: 'Ananya Iyer',  department: 'Engineering',leave_type: 'Paid Time Off (PTO)', start_date: '2026-08-20', end_date: '2026-08-22', days: 3, reason: 'Travel',             status: 'Approved' },
-  { id: 5, employee: 'Aarav Sharma', department: 'Engineering',leave_type: 'Comp Off',             start_date: '2026-08-10', end_date: '2026-08-10', days: 1, reason: 'Weekend support',   status: 'Approved' },
-]
-
-const initialBalances = [
-  { type: 'Paid Time Off (PTO)', allocated: 18, used: 6,  remaining: 12 },
-  { type: 'Sick Leave',          allocated: 12, used: 3,  remaining: 9  },
-  { type: 'Casual Leave',        allocated: 10, used: 4,  remaining: 6  },
-  { type: 'Compensatory Off',    allocated: 4,  used: 1,  remaining: 3  },
-]
-
-const buildInitialPayruns = () => {
-  // Generate the August 2026 payrun using the actual rule engine
-  const aug2026Employees = initialEmployees.filter(e => e.status === 'Active' || e.status === 'On Leave')
-  const structures = initialSalaryStructures
-  const findStructure = (empName) => {
-    const contract = initialContracts.find(c => c.employee === empName && c.status === 'Active')
-    return structures.find(s => s.name === contract?.structure) || structures[0]
-  }
-
-  const payslips = aug2026Employees.map((emp, i) => {
-    const struct = findStructure(emp.name)
-    const computed = computePayslip(emp.wage, struct.rules)
-    return {
-      id: 100 + i + 1,
-      employee: emp.name,
-      role: emp.job_position,
-      email: emp.work_email,
-      structure: struct.name,
-      gross: computed.totalAllowances,
-      basic: computed.basic,
-      hra: computed.hra,
-      allowance: computed.totalAllowances - computed.basic - computed.hra,
-      pf: computed.pf,
-      pt: computed.pt,
-      tds: computed.tds,
-      deductions: computed.totalDeductions,
-      net: computed.netPayable,
-      status: 'Paid',
-      lineItems: computed.lineItems,
-    }
-  })
-
-  return [
-    {
-      id: 1,
-      name: 'Payrun - August 2026 Regular',
-      period_start: '2026-08-01',
-      period_end: '2026-08-31',
-      structure: 'Regular Tech Band 4',
-      status: 'Paid',
-      total_employees: payslips.length,
-      total_gross: payslips.reduce((s, p) => s + p.gross, 0),
-      total_net: payslips.reduce((s, p) => s + p.net, 0),
-      payslips,
-      warnings: [],
-      created_at: '2026-08-01',
-    },
-  ]
-}
+const initialEmployees = []
+const initialContracts = []
+const initialAttendance = []
+const initialTimeOffRequests = []
+const initialBalances = []
+const buildInitialPayruns = () => []
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROVIDER
 // ─────────────────────────────────────────────────────────────────────────────
 export function PayrollProvider({ children }) {
+  // Wipe stale mock data from previous prototype runs
+  if (typeof window !== 'undefined' && localStorage.getItem('oxp_data_version') !== '2.0-live') {
+    localStorage.removeItem('oxp_employees')
+    localStorage.removeItem('oxp_contracts')
+    localStorage.removeItem('oxp_attendance')
+    localStorage.removeItem('oxp_timeoff')
+    localStorage.removeItem('oxp_payruns')
+    localStorage.setItem('oxp_data_version', '2.0-live')
+  }
+
   const [role, setRole] = useState(() => localStorage.getItem('oxp_role') || 'Admin')
 
   const [employees, setEmployees] = useState(() => {
-    try { const s = localStorage.getItem('oxp_employees'); return s ? JSON.parse(s) : initialEmployees } catch { return initialEmployees }
+    try { const s = localStorage.getItem('oxp_employees'); return s ? JSON.parse(s) : [] } catch { return [] }
   })
   const [contracts, setContracts] = useState(() => {
-    try { const s = localStorage.getItem('oxp_contracts'); return s ? JSON.parse(s) : initialContracts } catch { return initialContracts }
+    try { const s = localStorage.getItem('oxp_contracts'); return s ? JSON.parse(s) : [] } catch { return [] }
   })
   const [attendance, setAttendance] = useState(() => {
-    try { const s = localStorage.getItem('oxp_attendance'); return s ? JSON.parse(s) : initialAttendance } catch { return initialAttendance }
+    try { const s = localStorage.getItem('oxp_attendance'); return s ? JSON.parse(s) : [] } catch { return [] }
   })
   const [timeOffRequests, setTimeOffRequests] = useState(() => {
-    try { const s = localStorage.getItem('oxp_timeoff'); return s ? JSON.parse(s) : initialTimeOffRequests } catch { return initialTimeOffRequests }
+    try { const s = localStorage.getItem('oxp_timeoff'); return s ? JSON.parse(s) : [] } catch { return [] }
   })
   const [leaveBalances, setLeaveBalances] = useState(() => {
-    try { const s = localStorage.getItem('oxp_balances'); return s ? JSON.parse(s) : initialBalances } catch { return initialBalances }
+    try { const s = localStorage.getItem('oxp_balances'); return s ? JSON.parse(s) : [] } catch { return [] }
   })
   const [payruns, setPayruns] = useState(() => {
-    try { const s = localStorage.getItem('oxp_payruns'); return s ? JSON.parse(s) : buildInitialPayruns() } catch { return buildInitialPayruns() }
+    try { const s = localStorage.getItem('oxp_payruns'); return s ? JSON.parse(s) : [] } catch { return [] }
   })
   const [salaryStructures, setSalaryStructures] = useState(() => {
     try { const s = localStorage.getItem('oxp_structures'); return s ? JSON.parse(s) : initialSalaryStructures } catch { return initialSalaryStructures }
