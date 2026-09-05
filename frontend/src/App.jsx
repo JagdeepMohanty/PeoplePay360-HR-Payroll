@@ -8,6 +8,7 @@ import Attendance from './pages/Attendance'
 import TimeOff from './pages/TimeOff'
 import Payruns from './pages/Payruns'
 import PayrunProcessing from './pages/PayrunProcessing'
+import PayslipReport   from './pages/PayslipReport'
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="time-off" element={<TimeOff />} />
         <Route path="payruns" element={<Payruns />} />
         <Route path="payruns/:id/process" element={<PayrunProcessing />} />
+        <Route path="payruns/:id/report"  element={<PayslipReport />} />
       </Route>
     </Routes>
   )
