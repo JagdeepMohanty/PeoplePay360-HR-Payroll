@@ -15,27 +15,29 @@ def validate_payrun(db, payrun_id: int, employee_ids: list[int]) -> list[dict]:
         if not employee:
             continue
 
+        emp_name = employee.full_name
+
         # Check 1: Missing bank account
         if not employee.bank_account:
             warnings.append({
                 "employee_id": emp_id,
-                "employee_name": employee.name,
+                "employee_name": emp_name,
                 "type": "missing_bank_account",
-                "message": f"{employee.name} has no bank account on file.",
+                "message": f"{emp_name} has no bank account on file.",
             })
 
         # Check 2: Concurrent active contracts
         active_contracts = (
             db.query(Contract)
-            .filter(Contract.employee_id == emp_id, Contract.state == "running")
+            .filter(Contract.employee_id == emp_id, Contract.is_active == True)
             .count()
         )
         if active_contracts > 1:
             warnings.append({
                 "employee_id": emp_id,
-                "employee_name": employee.name,
+                "employee_name": emp_name,
                 "type": "concurrent_contracts",
-                "message": f"{employee.name} has {active_contracts} concurrent running contracts.",
+                "message": f"{emp_name} has {active_contracts} concurrent active contracts.",
             })
 
         # Check 3: Duplicate payslip for same payrun
@@ -47,9 +49,9 @@ def validate_payrun(db, payrun_id: int, employee_ids: list[int]) -> list[dict]:
         if duplicate > 1:
             warnings.append({
                 "employee_id": emp_id,
-                "employee_name": employee.name,
+                "employee_name": emp_name,
                 "type": "duplicate_payslip",
-                "message": f"{employee.name} has duplicate payslips in this payrun.",
+                "message": f"{emp_name} has duplicate payslips in this payrun.",
             })
 
     return warnings

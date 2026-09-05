@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Employees from './pages/Employees'
@@ -11,18 +12,22 @@ import PayrunProcessing from './pages/PayrunProcessing'
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Layout />}>
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="employees" element={<Employees />} />
-        <Route path="employees/:id" element={<EmployeeDetail />} />
-        <Route path="contracts" element={<Contracts />} />
-        <Route path="attendance" element={<Attendance />} />
-        <Route path="time-off" element={<TimeOff />} />
-        <Route path="payruns" element={<Payruns />} />
-        <Route path="payruns/:id/process" element={<PayrunProcessing />} />
-      </Route>
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="employees" element={<Employees />} />
+          <Route path="employees/:id" element={<EmployeeDetail />} />
+          <Route path="contracts" element={<Contracts />} />
+          <Route path="attendance" element={<Attendance />} />
+          <Route path="time-off" element={<TimeOff />} />
+          <Route path="payruns" element={<Payruns />} />
+          <Route path="payruns/:id/process" element={<PayrunProcessing />} />
+          {/* Wildcard Fallback prevents any 404 client route */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Route>
+      </Routes>
+    </AuthProvider>
   )
 }

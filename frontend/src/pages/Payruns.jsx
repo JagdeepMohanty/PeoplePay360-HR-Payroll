@@ -1,62 +1,122 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import client from '../api/client'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { getPayruns } from '../api/payruns'
 import PayrunWizardModal from '../components/PayrunWizardModal'
-import { Plus } from 'lucide-react'
+import { DollarSign, Plus, ChevronRight, Layers, Calendar, CheckCircle2 } from 'lucide-react'
 
 export default function Payruns() {
-  const [showWizard, setShowWizard] = useState(false)
-  const { data = [], isLoading } = useQuery({
-    queryKey: ['payruns'],
-    queryFn: () => client.get('/payruns').then(r => r.data),
-  })
+  const [payruns, setPayruns] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [isWizardOpen, setIsWizardOpen] = useState(false)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    loadPayruns()
+  }, [])
+
+  const loadPayruns = async () => {
+    setLoading(true)
+    try {
+      const data = await getPayruns()
+      setPayruns(data || [])
+    } catch (err) {
+      console.error('Failed to load payruns:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleWizardSuccess = (newPayrun) => {
+    setIsWizardOpen(false)
+    navigate(`/payruns/${newPayrun.id}/process`)
+  }
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'DRAFT':
+        return 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+      case 'COMPUTED':
+        return 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+      case 'VALIDATED':
+      case 'PAID':
+        return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+      default:
+        return 'bg-slate-700 text-slate-300 border-slate-600'
+    }
+  }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-semibold text-gray-800">Payruns</h1>
-        <button onClick={() => setShowWizard(true)}
-          className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
-          <Plus size={15} /> New Payrun
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl glass-panel border border-slate-800">
+        <div>
+          <h2 className="text-2xl font-extrabold text-white flex items-center gap-2">
+            <DollarSign className="w-7 h-7 text-emerald-400" />
+            <span>Payroll Batches & Payruns (Module B5)</span>
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Launch payrun wizard, compute batch salary rules, and process itemized payslips
+          </p>
+        </div>
+
+        <button
+          onClick={() => setIsWizardOpen(true)}
+          className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/20"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Create Payrun Batch</span>
         </button>
       </div>
 
-      {isLoading ? <p className="text-sm text-gray-400">Loading…</p> : (
-        <div className="bg-white rounded-xl border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
-              <tr>
-                {['ID', 'Period Start', 'Period End', 'Department', 'State', ''].map(h => (
-                  <th key={h} className="px-4 py-3 text-left">{h}</th>
-                ))}
+      {/* Payruns List Table */}
+      <div className="overflow-hidden rounded-2xl glass-panel border border-slate-800 shadow-xl">
+        <table className="w-full text-left text-xs">
+          <thead className="bg-slate-900 text-slate-400 uppercase font-semibold border-b border-slate-800">
+            <tr>
+              <th className="px-4 py-3">Payrun Batch Name</th>
+              <th className="px-4 py-3">Pay Period</th>
+              <th className="px-4 py-3">Assigned Structure</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/80 text-slate-200">
+            {payruns.map((pr) => (
+              <tr
+                key={pr.id}
+                onClick={() => navigate(`/payruns/${pr.id}/process`)}
+                className="hover:bg-slate-900/40 cursor-pointer transition-colors group"
+              >
+                <td className="px-4 py-3 font-bold text-white group-hover:text-brand-300">
+                  {pr.name || `Payrun #${pr.id}`}
+                </td>
+                <td className="px-4 py-3 font-mono">
+                  {pr.period_start} → {pr.period_end}
+                </td>
+                <td className="px-4 py-3 text-brand-300">Regular Monthly Structure</td>
+                <td className="px-4 py-3">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStatusBadge(pr.status)}`}>
+                    {pr.status || 'DRAFT'}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <button className="flex items-center space-x-1 ml-auto px-3 py-1 rounded-lg bg-brand-600/30 hover:bg-brand-600 text-white font-semibold text-xs border border-brand-500/30">
+                    <span>Process Batch</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {data.map(pr => (
-                <tr key={pr.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-gray-500">#{pr.id}</td>
-                  <td className="px-4 py-3">{pr.period_start}</td>
-                  <td className="px-4 py-3">{pr.period_end}</td>
-                  <td className="px-4 py-3 text-gray-500">{pr.department || 'All'}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      pr.state === 'confirmed' ? 'bg-green-100 text-green-700' :
-                      pr.state === 'computed' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-600'
-                    }`}>{pr.state}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link to={`/payruns/${pr.id}/process`} className="text-blue-600 hover:underline text-xs">Process →</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      {showWizard && <PayrunWizardModal onClose={() => setShowWizard(false)} />}
+      {/* Wizard Modal */}
+      <PayrunWizardModal
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        onSuccess={handleWizardSuccess}
+      />
     </div>
   )
 }
