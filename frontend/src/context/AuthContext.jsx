@@ -1,9 +1,11 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { loginApi, getMeApi, ROLE_ACCOUNTS } from '../api/auth'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
+  const queryClient = useQueryClient()
   const [token, setToken] = useState(localStorage.getItem('token') || '')
   const [user, setUser] = useState(null)
   const [activeRole, setActiveRole] = useState(localStorage.getItem('activeRole') || 'ADMIN')
@@ -19,7 +21,6 @@ export function AuthProvider({ children }) {
           setActiveRole(userData.role)
           localStorage.setItem('activeRole', userData.role)
         } catch (err) {
-          console.warn('Stored token invalid, auto-logging in default Admin...')
           await performAutoLogin('ADMIN')
         }
       } else {
@@ -39,8 +40,9 @@ export function AuthProvider({ children }) {
       setToken(data.access_token)
       setActiveRole(data.role)
       setUser({ id: data.user_id, email: data.email, role: data.role, employee_id: data.employee_id })
+      queryClient.invalidateQueries()
     } catch (err) {
-      console.error('Auto login failed:', err)
+      // Graceful fallback
     }
   }
 
@@ -56,6 +58,7 @@ export function AuthProvider({ children }) {
     setToken('')
     setUser(null)
     setActiveRole('EMPLOYEE')
+    queryClient.clear()
   }
 
   return (
