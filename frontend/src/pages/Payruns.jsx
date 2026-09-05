@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   DollarSign, Plus, Search, Calendar, ArrowRight,
-  CheckCircle2, Sparkles, FileCheck
+  CheckCircle2, Sparkles, FileCheck, CheckSquare, Square
 } from 'lucide-react'
+import { usePayroll } from '@/context/PayrollContext'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,42 +14,25 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter
 } from '@/components/ui/dialog'
-import client from '../api/client'
-
-const mockPayruns = [
-  { id: 1, name: 'Payrun - August 2026 Regular', period_start: '2026-08-01', period_end: '2026-08-31', total_employees: 92, total_net: 9845000, status: 'Paid' },
-  { id: 2, name: 'Payrun - July 2026 Regular', period_start: '2026-07-01', period_end: '2026-07-31', total_employees: 90, total_net: 9620000, status: 'Paid' },
-  { id: 3, name: 'Payrun - June 2026 Regular', period_start: '2026-06-01', period_end: '2026-06-30', total_employees: 88, total_net: 9410000, status: 'Paid' },
-  { id: 4, name: 'Payrun - September 2026 (Draft)', period_start: '2026-09-01', period_end: '2026-09-30', total_employees: 92, total_net: 10125000, status: 'Draft' },
-]
 
 export default function Payruns() {
+  const { payruns, createPayrun, employees, permissions } = usePayroll()
+  const navigate = useNavigate()
+
   const [searchTerm, setSearchTerm] = useState('')
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [wizardStep, setWizardStep] = useState(1)
 
-  // Form State
-  const [payrunName, setPayrunName] = useState('September 2026 Regular Cycle')
+  // Step 1 State: Scope
+  const [payrunName, setPayrunName] = useState('Payrun - September 2026 Batch')
   const [periodStart, setPeriodStart] = useState('2026-09-01')
   const [periodEnd, setPeriodEnd] = useState('2026-09-30')
-  const [selectedDept, setSelectedDept] = useState('All')
+  const [salaryStructure, setSalaryStructure] = useState('Regular Tech Band 4')
 
-  const { data: payrunsData } = useQuery({
-    queryKey: ['payruns'],
-    queryFn: async () => {
-      try {
-        const res = await client.get('/api/v1/payruns')
-        return res?.data?.length ? res.data : mockPayruns
-      } catch {
-        return mockPayruns
-      }
-    },
-    initialData: mockPayruns,
-  })
+  // Step 2 State: Explicit Employee Selection (B5)
+  const [selectedEmpIds, setSelectedEmpIds] = useState(() => employees.map(e => e.id))
 
-  const records = payrunsData || mockPayruns
-
-  const filtered = records.filter((p) =>
+  const filtered = payruns.filter((p) =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -60,17 +43,58 @@ export default function Payruns() {
       maximumFractionDigits: 0,
     }).format(amount)
 
+  const toggleSelectAll = () => {
+    if (selectedEmpIds.length === employees.length) {
+      setSelectedEmpIds([])
+    } else {
+      setSelectedEmpIds(employees.map(e => e.id))
+    }
+  }
+
+  const toggleEmp = (id) => {
+    setSelectedEmpIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    )
+  }
+
+  const handleFinishWizard = () => {
+    if (selectedEmpIds.length === 0) return
+
+    const created = createPayrun({
+      name: payrunName,
+      period_start: periodStart,
+      period_end: periodEnd,
+      structure: salaryStructure,
+      selected_employee_ids: selectedEmpIds,
+    })
+
+    setIsWizardOpen(false)
+    setWizardStep(1)
+    // Direct navigation to processing view as requested in B5
+    navigate(`/payruns/${created.id}/process`)
+  }
+
   return (
     <div className="space-y-4">
       {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900">Payroll Runs</h1>
-          <p className="text-xs text-slate-500">Calculate employee salary sheets, biometric deductions, and payouts.</p>
+          <p className="text-xs text-slate-500">Group payslips by period, calculate attendance deductions, and process disbursements.</p>
         </div>
-        <Button onClick={() => setIsWizardOpen(true)} className="gap-1.5 font-medium shadow-xs">
-          <Plus className="h-3.5 w-3.5" /> Generate Payrun
-        </Button>
+
+        {permissions.canEditPayroll && (
+          <Button
+            onClick={() => {
+              setWizardStep(1)
+              setSelectedEmpIds(employees.map(e => e.id))
+              setIsWizardOpen(true)
+            }}
+            className="gap-1.5 font-medium shadow-xs"
+          >
+            <Plus className="h-3.5 w-3.5" /> New Payrun
+          </Button>
+        )}
       </div>
 
       {/* Search Toolbar */}
@@ -80,7 +104,7 @@ export default function Payruns() {
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search payrun batch..."
+            placeholder="Search payrun batches..."
             className="pl-8 h-8 text-xs bg-white shadow-xs"
           />
         </div>
@@ -92,7 +116,8 @@ export default function Payruns() {
           <TableHeader>
             <TableRow>
               <TableHead>Payrun Batch</TableHead>
-              <TableHead>Period</TableHead>
+              <TableHead>Period Range</TableHead>
+              <TableHead>Salary Structure</TableHead>
               <TableHead className="text-center">Staff Count</TableHead>
               <TableHead className="text-right">Total Net Payout</TableHead>
               <TableHead className="text-center">Status</TableHead>
@@ -111,21 +136,34 @@ export default function Payruns() {
                 <TableCell className="text-xs font-mono text-slate-600">
                   {pr.period_start} → {pr.period_end}
                 </TableCell>
-                <TableCell className="text-center text-xs text-slate-700">
+                <TableCell className="text-xs text-slate-600">
+                  {pr.structure || 'Regular Tech Band 4'}
+                </TableCell>
+                <TableCell className="text-center text-xs font-semibold text-slate-700">
                   {pr.total_employees} staff
                 </TableCell>
-                <TableCell className="text-right tabular-nums font-semibold text-slate-900">
+                <TableCell className="text-right tabular-nums font-bold text-slate-900">
                   {formatCurrency(pr.total_net)}
                 </TableCell>
                 <TableCell className="text-center">
-                  <Badge variant={pr.status === 'Paid' ? 'success' : 'warning'}>
+                  <Badge
+                    variant={
+                      pr.status === 'Paid'
+                        ? 'success'
+                        : pr.status === 'Validated'
+                        ? 'odooTeal'
+                        : pr.status === 'Computed'
+                        ? 'odoo'
+                        : 'warning'
+                    }
+                  >
                     {pr.status}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
                   <Link to={`/payruns/${pr.id}/process`}>
                     <Button variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1 text-[#714b67] hover:text-[#5f3e56]">
-                      Open <ArrowRight className="h-3 w-3" />
+                      Open Batch <ArrowRight className="h-3 w-3" />
                     </Button>
                   </Link>
                 </TableCell>
@@ -135,39 +173,53 @@ export default function Payruns() {
         </Table>
       </Card>
 
-      {/* Payrun Creation Wizard Modal */}
+      {/* B5) Payrun Creation Wizard Modal */}
       <Dialog open={isWizardOpen} onOpenChange={setIsWizardOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <div className="flex items-center gap-1.5 text-[#714b67] text-[11px] font-semibold uppercase tracking-wider mb-0.5">
               <Sparkles className="h-3.5 w-3.5" />
-              <span>Step {wizardStep} of 2</span>
+              <span>Step {wizardStep} of 2 — Payrun Setup</span>
             </div>
             <DialogTitle>
-              {wizardStep === 1 ? 'Configure Payrun Cycle' : 'Verify Eligible Staff'}
+              {wizardStep === 1 ? 'Define Payrun Scope' : 'Select Eligible Employees'}
             </DialogTitle>
             <DialogDescription>
               {wizardStep === 1
-                ? 'Specify the period dates and target department.'
-                : 'Confirm attendance records and approved leaves.'}
+                ? 'Specify the salary structure, batch name, and pay period range.'
+                : 'Select the exact employees to include in this payroll calculation batch.'}
             </DialogDescription>
           </DialogHeader>
 
           {wizardStep === 1 ? (
-            <div className="space-y-3 py-2 text-xs">
+            <div className="space-y-3.5 py-2 text-xs">
               <div className="space-y-1">
-                <label className="font-medium text-slate-700">Payrun Batch Name</label>
+                <label className="font-medium text-slate-700">Batch Title</label>
                 <Input
                   value={payrunName}
                   onChange={(e) => setPayrunName(e.target.value)}
-                  placeholder="e.g. September 2026 Regular Cycle"
                   className="h-8 text-xs bg-slate-50"
+                  placeholder="e.g. October 2026 Regular Cycle"
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-medium text-slate-700">Salary Structure</label>
+                <select
+                  value={salaryStructure}
+                  onChange={(e) => setSalaryStructure(e.target.value)}
+                  className="flex h-8 w-full rounded-lg border-0 bg-slate-100/90 px-2.5 py-1 text-xs text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#714b67]/25"
+                >
+                  <option value="Regular Tech Band 4">Regular Tech Band 4 (Base 50% + HRA 20%)</option>
+                  <option value="Executive HR Band 3">Executive HR Band 3</option>
+                  <option value="Sales Base + Incentive">Sales Base + Incentive</option>
+                  <option value="Operations Band 2">Operations Band 2</option>
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="font-medium text-slate-700">Start Date</label>
+                  <label className="font-medium text-slate-700">Period Start Date</label>
                   <Input
                     type="date"
                     value={periodStart}
@@ -176,7 +228,7 @@ export default function Payruns() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="font-medium text-slate-700">End Date</label>
+                  <label className="font-medium text-slate-700">Period End Date</label>
                   <Input
                     type="date"
                     value={periodEnd}
@@ -185,62 +237,85 @@ export default function Payruns() {
                   />
                 </div>
               </div>
-
-              <div className="space-y-1">
-                <label className="font-medium text-slate-700">Department</label>
-                <select
-                  value={selectedDept}
-                  onChange={(e) => setSelectedDept(e.target.value)}
-                  className="flex h-8 w-full rounded-lg border-0 bg-slate-100/90 px-2.5 py-1 text-xs text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#714b67]/25"
-                >
-                  <option value="All">All Departments (92 Employees)</option>
-                  <option value="Engineering">Engineering (34 Employees)</option>
-                  <option value="Sales">Sales & Operations (40 Employees)</option>
-                </select>
-              </div>
             </div>
           ) : (
-            <div className="space-y-2.5 py-2 text-xs">
-              <div className="p-3 rounded-xl bg-slate-50 space-y-1.5">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Batch:</span>
-                  <span className="font-medium text-slate-900">{payrunName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Period:</span>
-                  <span className="font-mono text-slate-700">{periodStart} to {periodEnd}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Eligible Employees:</span>
-                  <Badge variant="success">92 Employees Ready</Badge>
-                </div>
+            <div className="space-y-3 py-2 text-xs">
+              <div className="flex items-center justify-between pb-1">
+                <span className="font-semibold text-slate-800">
+                  {selectedEmpIds.length} of {employees.length} Employees Selected
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleSelectAll}
+                  className="text-xs text-[#714b67] font-semibold hover:underline"
+                >
+                  {selectedEmpIds.length === employees.length ? 'Deselect All' : 'Select All'}
+                </button>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-emerald-50 flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span className="text-[11px] text-emerald-800">
-                  Biometrics, unapproved PTOs, and statutory ceilings verified.
-                </span>
+              <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
+                {employees.map((emp) => {
+                  const isChecked = selectedEmpIds.includes(emp.id)
+                  return (
+                    <div
+                      key={emp.id}
+                      onClick={() => toggleEmp(emp.id)}
+                      className={`p-2.5 rounded-xl cursor-pointer flex items-center justify-between transition-all ${
+                        isChecked
+                          ? 'bg-[#714b67]/10 text-slate-900'
+                          : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        {isChecked ? (
+                          <CheckSquare className="h-4 w-4 text-[#714b67]" />
+                        ) : (
+                          <Square className="h-4 w-4 text-slate-300" />
+                        )}
+                        <div>
+                          <span className="font-semibold text-xs block">{emp.name}</span>
+                          <span className="text-[10px] text-slate-500">{emp.job_position} · {emp.department}</span>
+                        </div>
+                      </div>
+                      <span className="font-mono font-medium text-xs">
+                        ₹{emp.wage?.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
 
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 pt-2">
             {wizardStep === 2 && (
-              <Button variant="outline" size="sm" onClick={() => setWizardStep(1)} className="h-7 text-xs">
-                Back
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setWizardStep(1)}
+                className="h-7 text-xs"
+              >
+                Back to Scope
               </Button>
             )}
             {wizardStep === 1 ? (
-              <Button size="sm" onClick={() => setWizardStep(2)} className="h-7 text-xs">
-                Continue to Staff
+              <Button
+                size="sm"
+                onClick={() => setWizardStep(2)}
+                className="h-7 text-xs font-medium"
+              >
+                Continue to Employee Selection →
               </Button>
             ) : (
-              <Link to="/payruns/4/process" onClick={() => setIsWizardOpen(false)}>
-                <Button size="sm" variant="teal" className="h-7 text-xs gap-1">
-                  <Sparkles className="h-3 w-3" /> Compute Payslips
-                </Button>
-              </Link>
+              <Button
+                size="sm"
+                variant="teal"
+                disabled={selectedEmpIds.length === 0}
+                onClick={handleFinishWizard}
+                className="h-7 text-xs gap-1 font-medium"
+              >
+                <Sparkles className="h-3 w-3" /> Initialize Payrun Batch
+              </Button>
             )}
           </DialogFooter>
         </DialogContent>

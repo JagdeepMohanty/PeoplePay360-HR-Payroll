@@ -1,48 +1,42 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
   Search, Plus, LayoutGrid, List, Mail, Phone, Building2,
-  ExternalLink
+  ExternalLink, UserPlus, X, DollarSign
 } from 'lucide-react'
-import { getEmployees } from '../api/employees'
+import { usePayroll } from '@/context/PayrollContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-
-const fallbackEmployees = [
-  { id: 1, name: 'Aarav Sharma', department: 'Engineering', job_position: 'Tech Lead', work_email: 'aarav.sharma@oxp.com', work_phone: '+91 98765 43210', status: 'Active' },
-  { id: 2, name: 'Priya Patel', department: 'HR', job_position: 'HR Manager', work_email: 'priya.patel@oxp.com', work_phone: '+91 98765 43211', status: 'Active' },
-  { id: 3, name: 'Rohan Verma', department: 'Sales', job_position: 'Account Executive', work_email: 'rohan.verma@oxp.com', work_phone: '+91 98765 43212', status: 'Active' },
-  { id: 4, name: 'Ananya Iyer', department: 'Engineering', job_position: 'Frontend Engineer', work_email: 'ananya.iyer@oxp.com', work_phone: '+91 98765 43213', status: 'Active' },
-  { id: 5, name: 'Vikram Singh', department: 'Operations', job_position: 'Operations Specialist', work_email: 'vikram.singh@oxp.com', work_phone: '+91 98765 43214', status: 'On Leave' },
-  { id: 6, name: 'Sneha Reddy', department: 'Marketing', job_position: 'Growth Lead', work_email: 'sneha.reddy@oxp.com', work_phone: '+91 98765 43215', status: 'Active' },
-]
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogDescription, DialogFooter
+} from '@/components/ui/dialog'
 
 export default function Employees() {
+  const { employees, addEmployee, permissions, role } = usePayroll()
   const [searchTerm, setSearchTerm] = useState('')
   const [deptFilter, setDeptFilter] = useState('All')
   const [viewMode, setViewMode] = useState('grid')
 
-  const { data: apiEmployees } = useQuery({
-    queryKey: ['employees'],
-    queryFn: async () => {
-      try {
-        const res = await getEmployees()
-        return res?.data?.length ? res.data : fallbackEmployees
-      } catch {
-        return fallbackEmployees
-      }
-    },
-    initialData: fallbackEmployees,
+  // Modal State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [newEmp, setNewEmp] = useState({
+    name: '',
+    work_email: '',
+    work_phone: '',
+    department: 'Engineering',
+    job_position: '',
+    manager_name: 'Priya Patel',
+    contract_type: 'Full-time Permanent',
+    wage: 85000,
   })
 
-  const employees = apiEmployees || fallbackEmployees
-
   const filtered = employees.filter((emp) => {
+    // If employee only role, focus on own profile or all
     const matchesSearch =
       emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.job_position?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -59,17 +53,40 @@ export default function Employees() {
     return parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase()
   }
 
+  const handleCreateEmployee = (e) => {
+    e.preventDefault()
+    if (!newEmp.name.trim()) return
+
+    addEmployee(newEmp)
+    setIsAddModalOpen(false)
+    setNewEmp({
+      name: '',
+      work_email: '',
+      work_phone: '',
+      department: 'Engineering',
+      job_position: '',
+      manager_name: 'Priya Patel',
+      contract_type: 'Full-time Permanent',
+      wage: 85000,
+    })
+  }
+
   return (
     <div className="space-y-4">
-      {/* Top Action & Control Bar (0 Outlines) */}
+      {/* Top Action & Control Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div className="flex items-center gap-2.5">
-          <Button className="gap-1.5 font-medium shadow-xs">
-            <Plus className="h-3.5 w-3.5" />
-            New Employee
-          </Button>
+          {permissions.canManageHR && (
+            <Button
+              onClick={() => setIsAddModalOpen(true)}
+              className="gap-1.5 font-medium shadow-xs"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New Employee
+            </Button>
+          )}
           <span className="text-xs text-slate-500 font-medium">
-            {filtered.length} records
+            {filtered.length} active records
           </span>
         </div>
 
@@ -80,7 +97,7 @@ export default function Employees() {
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Filter by name, role, email..."
+              placeholder="Search by name, role, email..."
               className="pl-8 h-8 text-xs bg-white shadow-xs"
             />
           </div>
@@ -108,7 +125,7 @@ export default function Employees() {
         </div>
       </div>
 
-      {/* Department Filter Chips (0 Outlines) */}
+      {/* Department Filter Chips */}
       <div className="flex items-center gap-1.5 overflow-x-auto py-1">
         {departments.map((dept) => (
           <button
@@ -125,7 +142,7 @@ export default function Employees() {
         ))}
       </div>
 
-      {/* Content */}
+      {/* Content Rendering */}
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {filtered.map((emp) => (
@@ -216,6 +233,98 @@ export default function Employees() {
           </Table>
         </Card>
       )}
+
+      {/* Dynamic Add Employee Modal (B1) */}
+      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Employee</DialogTitle>
+            <DialogDescription>
+              Create a new master employee record and auto-generate their initial contract.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateEmployee} className="space-y-3 py-2 text-xs">
+            <div className="space-y-1">
+              <label className="font-medium text-slate-700">Full Name *</label>
+              <Input
+                required
+                value={newEmp.name}
+                onChange={(e) => setNewEmp({ ...newEmp, name: e.target.value })}
+                placeholder="e.g. Rahul Sharma"
+                className="h-8 text-xs bg-slate-50"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="font-medium text-slate-700">Department</label>
+                <select
+                  value={newEmp.department}
+                  onChange={(e) => setNewEmp({ ...newEmp, department: e.target.value })}
+                  className="flex h-8 w-full rounded-lg border-0 bg-slate-100/90 px-2.5 py-1 text-xs text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#714b67]/25"
+                >
+                  <option value="Engineering">Engineering</option>
+                  <option value="HR">HR</option>
+                  <option value="Sales">Sales</option>
+                  <option value="Operations">Operations</option>
+                  <option value="Marketing">Marketing</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-medium text-slate-700">Job Position *</label>
+                <Input
+                  required
+                  value={newEmp.job_position}
+                  onChange={(e) => setNewEmp({ ...newEmp, job_position: e.target.value })}
+                  placeholder="e.g. Backend Engineer"
+                  className="h-8 text-xs bg-slate-50"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="font-medium text-slate-700">Work Email</label>
+                <Input
+                  type="email"
+                  value={newEmp.work_email}
+                  onChange={(e) => setNewEmp({ ...newEmp, work_email: e.target.value })}
+                  placeholder="e.g. rahul@oxp.com"
+                  className="h-8 text-xs bg-slate-50"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-medium text-slate-700">Monthly Base Salary (₹) *</label>
+                <Input
+                  type="number"
+                  required
+                  value={newEmp.wage}
+                  onChange={(e) => setNewEmp({ ...newEmp, wage: e.target.value })}
+                  className="h-8 text-xs bg-slate-50 font-mono"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAddModalOpen(false)}
+                className="h-7 text-xs"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" className="h-7 text-xs">
+                Save & Create Contract
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

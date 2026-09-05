@@ -1,41 +1,28 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Plus, Search, FileText } from 'lucide-react'
+import { Plus, Search, FileText, CheckCircle2, X } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import client from '../api/client'
-
-const mockContracts = [
-  { id: 1, contract_ref: 'CNT-2023-001', employee: 'Aarav Sharma', department: 'Engineering', job_position: 'Tech Lead', start_date: '2023-01-12', end_date: 'Open-ended', wage: 175000, structure: 'Regular Tech Band 4', status: 'Active' },
-  { id: 2, contract_ref: 'CNT-2023-014', employee: 'Priya Patel', department: 'HR', job_position: 'HR Manager', start_date: '2023-04-01', end_date: 'Open-ended', wage: 125000, structure: 'Executive HR Band 3', status: 'Active' },
-  { id: 3, contract_ref: 'CNT-2024-008', employee: 'Rohan Verma', department: 'Sales', job_position: 'Account Executive', start_date: '2024-02-15', end_date: 'Open-ended', wage: 95000, structure: 'Sales Base + Incentive', status: 'Active' },
-  { id: 4, contract_ref: 'CNT-2024-022', employee: 'Ananya Iyer', department: 'Engineering', job_position: 'Frontend Engineer', start_date: '2024-06-01', end_date: 'Open-ended', wage: 110000, structure: 'Regular Tech Band 2', status: 'Active' },
-  { id: 5, contract_ref: 'CNT-2025-003', employee: 'Vikram Singh', department: 'Operations', job_position: 'Operations Specialist', start_date: '2025-01-10', end_date: '2026-12-31', wage: 85000, structure: 'Operations Band 2', status: 'Active' },
-  { id: 6, contract_ref: 'CNT-2025-019', employee: 'Sneha Reddy', department: 'Marketing', job_position: 'Growth Lead', start_date: '2025-03-01', end_date: 'Open-ended', wage: 120000, structure: 'Marketing Band 3', status: 'Active' },
-  { id: 7, contract_ref: 'CNT-2022-045', employee: 'Rajesh Kumar', department: 'Engineering', job_position: 'DevOps Architect', start_date: '2022-08-01', end_date: '2026-07-31', wage: 190000, structure: 'Regular Tech Band 5', status: 'Expired' },
-]
+import { usePayroll } from '../context/PayrollContext'
 
 export default function Contracts() {
+  const { contracts, employees, addContract, permissions } = usePayroll()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
-
-  const { data: contractsData } = useQuery({
-    queryKey: ['contracts'],
-    queryFn: async () => {
-      try {
-        const res = await client.get('/api/v1/contracts')
-        return res?.data?.length ? res.data : mockContracts
-      } catch {
-        return mockContracts
-      }
-    },
-    initialData: mockContracts,
+  const [showModal, setShowModal] = useState(false)
+  const [newForm, setNewForm] = useState({
+    employee: '',
+    department: 'Engineering',
+    job_position: 'Specialist',
+    wage: 85000,
+    structure: 'Regular Tech Band 4',
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: 'Open-ended',
   })
 
-  const records = contractsData || mockContracts
+  const records = contracts || []
 
   const filtered = records.filter((c) => {
     const matchesSearch =
@@ -53,6 +40,37 @@ export default function Contracts() {
       maximumFractionDigits: 0,
     }).format(amount)
 
+  const handleCreateSubmit = (e) => {
+    e.preventDefault()
+    if (!newForm.employee) return
+    addContract(newForm)
+    setShowModal(false)
+    setNewForm({
+      employee: '',
+      department: 'Engineering',
+      job_position: 'Specialist',
+      wage: 85000,
+      structure: 'Regular Tech Band 4',
+      start_date: new Date().toISOString().split('T')[0],
+      end_date: 'Open-ended',
+    })
+  }
+
+  const handleSelectEmployee = (empName) => {
+    const found = employees.find(e => e.name === empName)
+    if (found) {
+      setNewForm(prev => ({
+        ...prev,
+        employee: found.name,
+        department: found.department,
+        job_position: found.job_position,
+        wage: found.wage || 85000,
+      }))
+    } else {
+      setNewForm(prev => ({ ...prev, employee: empName }))
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Top Action Bar */}
@@ -61,9 +79,11 @@ export default function Contracts() {
           <h1 className="text-xl font-bold tracking-tight text-slate-900">Contracts</h1>
           <p className="text-xs text-slate-500">Employment terms, wage components, and validity periods.</p>
         </div>
-        <Button className="gap-1.5 font-medium shadow-xs">
-          <Plus className="h-3.5 w-3.5" /> New Contract
-        </Button>
+        {permissions.canManageHR && (
+          <Button onClick={() => setShowModal(true)} className="gap-1.5 font-medium shadow-xs">
+            <Plus className="h-3.5 w-3.5" /> New Contract
+          </Button>
+        )}
       </div>
 
       {/* Filter and Search Bar */}
@@ -74,7 +94,7 @@ export default function Contracts() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by ref or employee..."
-            className="pl-8 h-8 text-xs bg-white shadow-xs"
+            className="pl-8 h-8 text-xs bg-white shadow-xs border-0"
           />
         </div>
 
@@ -96,7 +116,7 @@ export default function Contracts() {
       </div>
 
       {/* Contracts Table */}
-      <Card className="p-0 overflow-hidden">
+      <Card className="p-0 overflow-hidden border-0">
         <Table>
           <TableHeader>
             <TableRow>
@@ -135,6 +155,126 @@ export default function Contracts() {
           </TableBody>
         </Table>
       </Card>
+
+      {/* New Contract Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl border-0 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[#714b67]/10 flex items-center justify-center text-[#714b67]">
+                  <FileText className="h-4 w-4" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900">Generate Employment Contract</h3>
+              </div>
+              <button
+                onClick={() => setShowModal(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSubmit} className="space-y-3.5">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">Select Employee *</label>
+                <select
+                  value={newForm.employee}
+                  onChange={(e) => handleSelectEmployee(e.target.value)}
+                  className="w-full text-xs rounded-lg bg-slate-50 p-2.5 text-slate-800 border-0 focus:ring-2 focus:ring-[#714b67]/30"
+                  required
+                >
+                  <option value="">-- Choose Employee --</option>
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.name}>{emp.name} ({emp.department})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Department</label>
+                  <Input
+                    value={newForm.department}
+                    onChange={(e) => setNewForm(prev => ({ ...prev, department: e.target.value }))}
+                    className="h-8 text-xs bg-slate-50 border-0"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Job Position</label>
+                  <Input
+                    value={newForm.job_position}
+                    onChange={(e) => setNewForm(prev => ({ ...prev, job_position: e.target.value }))}
+                    className="h-8 text-xs bg-slate-50 border-0"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Monthly Wage (₹) *</label>
+                  <Input
+                    type="number"
+                    value={newForm.wage}
+                    onChange={(e) => setNewForm(prev => ({ ...prev, wage: e.target.value }))}
+                    className="h-8 text-xs bg-slate-50 border-0"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Salary Structure</label>
+                  <select
+                    value={newForm.structure}
+                    onChange={(e) => setNewForm(prev => ({ ...prev, structure: e.target.value }))}
+                    className="w-full text-xs rounded-lg bg-slate-50 p-2 text-slate-800 border-0 focus:ring-2 focus:ring-[#714b67]/30 h-8"
+                  >
+                    <option value="Regular Tech Band 4">Regular Tech Band 4</option>
+                    <option value="Executive HR Band 3">Executive HR Band 3</option>
+                    <option value="Sales Base + Incentive">Sales Base + Incentive</option>
+                    <option value="Operations Band 2">Operations Band 2</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Start Date</label>
+                  <Input
+                    type="date"
+                    value={newForm.start_date}
+                    onChange={(e) => setNewForm(prev => ({ ...prev, start_date: e.target.value }))}
+                    className="h-8 text-xs bg-slate-50 border-0"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">End Date</label>
+                  <Input
+                    value={newForm.end_date}
+                    onChange={(e) => setNewForm(prev => ({ ...prev, end_date: e.target.value }))}
+                    placeholder="Open-ended or YYYY-MM-DD"
+                    className="h-8 text-xs bg-slate-50 border-0"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowModal(false)}
+                  className="border-0 shadow-xs"
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" className="shadow-xs">
+                  Create Contract
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -84,3 +84,42 @@
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
+
+/* ─── Print / PDF Payslip Media Query ─────────────────────────── */
+@media print {
+  /* Hide everything except the payslip zone */
+  body > * { display: none !important; }
+  #payslip-print-zone { display: block !important; }
+  .print-visible { display: block !important; }
+  .no-print { display: none !important; }
+
+  /* Reset page margins for clean PDF export */
+  @page {
+    margin: 12mm 14mm;
+    size: A4 portrait;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11px !important;
+  }
+
+  /* Make the payslip card fill the page */
+  #payslip-print-zone,
+  #payslip-print-zone * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* For hidden print zone that becomes visible only during print */
+.print-only {
+  display: none;
+}
+@media print {
+  .print-only {
+    display: block !important;
+  }
+}
+

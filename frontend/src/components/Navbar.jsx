@@ -1,15 +1,29 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Bell, Search, Clock, LogIn, LogOut } from 'lucide-react'
+import { Bell, Search, Clock, LogIn, LogOut, UserCheck, Shield } from 'lucide-react'
+import { usePayroll } from '@/context/PayrollContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 
 export default function Navbar() {
+  const { role, setRole, attendance, punchIn, punchOut } = usePayroll()
   const [time, setTime] = useState(new Date())
-  const [isCheckedIn, setIsCheckedIn] = useState(false)
-  const [sessionSeconds, setSessionSeconds] = useState(0)
   const location = useLocation()
+
+  // Find if user is checked in
+  const todayStr = new Date().toISOString().split('T')[0]
+  const userTodayPunch = attendance.find(
+    a => a.employee === 'Aarav Sharma' && a.date === todayStr && a.check_out === '-'
+  )
+  const isCheckedIn = !!userTodayPunch
+
+  // Live real-time clock
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   // Dynamic breadcrumb based on current path
   const getBreadcrumb = () => {
@@ -25,28 +39,12 @@ export default function Navbar() {
     return 'Overview'
   }
 
-  // Live real-time clock
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000)
-    return () => clearInterval(timer)
-  }, [])
-
-  // Attendance work timer
-  useEffect(() => {
-    let interval = null
+  const handleToggleAttendance = () => {
     if (isCheckedIn) {
-      interval = setInterval(() => setSessionSeconds((s) => s + 1), 1000)
+      punchOut('Aarav Sharma')
     } else {
-      setSessionSeconds(0)
+      punchIn('Aarav Sharma')
     }
-    return () => clearInterval(interval)
-  }, [isCheckedIn])
-
-  const formatTimer = (totalSeconds) => {
-    const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0')
-    const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0')
-    const s = String(totalSeconds % 60).padStart(2, '0')
-    return `${h}:${m}:${s}`
   }
 
   return (
@@ -59,7 +57,7 @@ export default function Navbar() {
       </div>
 
       {/* Center Search Bar */}
-      <div className="relative w-80 hidden sm:block">
+      <div className="relative w-72 hidden md:block">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
         <Input
           type="text"
@@ -70,8 +68,25 @@ export default function Navbar() {
 
       {/* Right Controls */}
       <div className="flex items-center gap-3">
+        {/* Role Switcher (Operational Experience Requirement 3) */}
+        <div className="flex items-center gap-1.5 bg-slate-100/80 px-2 py-1 rounded-full text-xs">
+          <Shield className="h-3 w-3 text-[#714b67]" />
+          <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">Role:</span>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            className="bg-transparent border-0 text-[11px] font-semibold text-[#714b67] focus:outline-none cursor-pointer pr-1"
+          >
+            <option value="Admin">Admin</option>
+            <option value="HR Payroll Manager">HR Payroll Manager</option>
+            <option value="HR Payroll User">HR Payroll User</option>
+            <option value="HR Manager">HR Manager</option>
+            <option value="Employee">Employee</option>
+          </select>
+        </div>
+
         {/* Real-time Clock */}
-        <div className="hidden md:flex items-center gap-1.5 text-xs text-slate-600 bg-slate-100/70 px-3 py-1.5 rounded-full border-0">
+        <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-600 bg-slate-100/70 px-3 py-1.5 rounded-full border-0">
           <Clock className="h-3 w-3 text-[#714b67]" />
           <span className="tabular-nums font-medium text-[11px]">
             {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -83,14 +98,14 @@ export default function Navbar() {
           {isCheckedIn && (
             <div className="flex items-center gap-1.5 px-2 text-xs text-emerald-700 font-mono">
               <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-[11px] font-medium">{formatTimer(sessionSeconds)}</span>
+              <span className="text-[11px] font-medium">Checked In</span>
             </div>
           )}
 
           <Button
             size="sm"
             variant={isCheckedIn ? "destructive" : "teal"}
-            onClick={() => setIsCheckedIn(!isCheckedIn)}
+            onClick={handleToggleAttendance}
             className="h-6 px-3 rounded-full text-[11px] font-medium"
           >
             {isCheckedIn ? (
@@ -104,11 +119,6 @@ export default function Navbar() {
             )}
           </Button>
         </div>
-
-        {/* Notifications */}
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-slate-800 rounded-full">
-          <Bell className="h-4 w-4" />
-        </Button>
 
         {/* User Profile */}
         <Avatar className="h-8 w-8 border-0 shadow-xs">

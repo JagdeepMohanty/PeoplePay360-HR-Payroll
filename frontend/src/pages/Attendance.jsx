@@ -1,46 +1,39 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import {
   Search, Clock, CheckCircle2, AlertCircle, XCircle,
-  Calendar, Download, UserCheck
+  Calendar, Download, UserCheck, Plus, LogIn, LogOut
 } from 'lucide-react'
+import { usePayroll } from '@/context/PayrollContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import client from '../api/client'
-
-const mockAttendance = [
-  { id: 1, employee: 'Aarav Sharma', department: 'Engineering', date: '2026-09-05', check_in: '09:02 AM', check_out: '06:15 PM', worked_hours: '8h 45m', overtime: '0h 45m', status: 'Present' },
-  { id: 2, employee: 'Priya Patel', department: 'HR', date: '2026-09-05', check_in: '09:42 AM', check_out: '06:00 PM', worked_hours: '7h 48m', overtime: '-', status: 'Late' },
-  { id: 3, employee: 'Rohan Verma', department: 'Sales', date: '2026-09-05', check_in: '08:55 AM', check_out: '05:30 PM', worked_hours: '8h 35m', overtime: '-', status: 'Present' },
-  { id: 4, employee: 'Ananya Iyer', department: 'Engineering', date: '2026-09-05', check_in: '09:00 AM', check_out: '06:30 PM', worked_hours: '9h 00m', overtime: '1h 00m', status: 'Present' },
-  { id: 5, employee: 'Vikram Singh', department: 'Operations', date: '2026-09-05', check_in: '-', check_out: '-', worked_hours: '0h', overtime: '-', status: 'On Leave' },
-  { id: 6, employee: 'Sneha Reddy', department: 'Marketing', date: '2026-09-05', check_in: '10:15 AM', check_out: '07:00 PM', worked_hours: '8h 15m', overtime: '-', status: 'Late' },
-  { id: 7, employee: 'Kabir Das', department: 'Engineering', date: '2026-09-05', check_in: '-', check_out: '-', worked_hours: '0h', overtime: '-', status: 'Absent' },
-]
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogDescription, DialogFooter
+} from '@/components/ui/dialog'
 
 export default function Attendance() {
+  const { attendance, employees, punchIn, punchOut, addManualAttendance, permissions } = usePayroll()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false)
 
-  const { data: attendanceData } = useQuery({
-    queryKey: ['attendance'],
-    queryFn: async () => {
-      try {
-        const res = await client.get('/api/v1/attendance')
-        return res?.data?.length ? res.data : mockAttendance
-      } catch {
-        return mockAttendance
-      }
-    },
-    initialData: mockAttendance,
+  // Manual Attendance Form State (B3)
+  const [manualForm, setManualForm] = useState({
+    employee: employees[0]?.name || 'Aarav Sharma',
+    department: employees[0]?.department || 'Engineering',
+    date: new Date().toISOString().split('T')[0],
+    check_in: '09:00 AM',
+    check_out: '06:00 PM',
+    worked_hours: '8h 00m',
+    overtime: '0h 00m',
+    status: 'Present',
+    notes: '',
   })
 
-  const records = attendanceData || mockAttendance
-
-  const filtered = records.filter((rec) => {
+  const filtered = attendance.filter((rec) => {
     const matchesSearch =
       rec.employee?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rec.department?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -49,10 +42,10 @@ export default function Attendance() {
   })
 
   const stats = [
-    { label: 'Present Today', count: records.filter((r) => r.status === 'Present').length, color: 'text-emerald-700', bg: 'bg-emerald-50' },
-    { label: 'Late Arrivals', count: records.filter((r) => r.status === 'Late').length, color: 'text-amber-700', bg: 'bg-amber-50' },
-    { label: 'On Leave', count: records.filter((r) => r.status === 'On Leave').length, color: 'text-sky-700', bg: 'bg-sky-50' },
-    { label: 'Absent', count: records.filter((r) => r.status === 'Absent').length, color: 'text-rose-700', bg: 'bg-rose-50' },
+    { label: 'Present Today', count: attendance.filter((r) => r.status === 'Present').length, color: 'text-emerald-700', bg: 'bg-emerald-50' },
+    { label: 'Late Arrivals', count: attendance.filter((r) => r.status === 'Late').length, color: 'text-amber-700', bg: 'bg-amber-50' },
+    { label: 'On Leave', count: attendance.filter((r) => r.status === 'On Leave').length, color: 'text-sky-700', bg: 'bg-sky-50' },
+    { label: 'Absent', count: attendance.filter((r) => r.status === 'Absent').length, color: 'text-rose-700', bg: 'bg-rose-50' },
   ]
 
   const getStatusBadge = (status) => {
@@ -70,6 +63,12 @@ export default function Attendance() {
     }
   }
 
+  const handleManualSubmit = (e) => {
+    e.preventDefault()
+    addManualAttendance(manualForm)
+    setIsManualModalOpen(false)
+  }
+
   return (
     <div className="space-y-4">
       {/* Top Action Bar (0 Outlines) */}
@@ -78,9 +77,20 @@ export default function Attendance() {
           <h1 className="text-xl font-bold tracking-tight text-slate-900">Attendance & Shifts</h1>
           <p className="text-xs text-slate-500">Live biometric punch-in logs and overtime tracking.</p>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 shadow-xs">
-          <Download className="h-3.5 w-3.5" /> Export Attendance
-        </Button>
+
+        <div className="flex items-center gap-2">
+          {permissions.canManageHR && (
+            <Button
+              onClick={() => setIsManualModalOpen(true)}
+              className="gap-1.5 font-medium shadow-xs"
+            >
+              <Plus className="h-3.5 w-3.5" /> Manual Correction
+            </Button>
+          )}
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 shadow-xs">
+            <Download className="h-3.5 w-3.5" /> Export Logs
+          </Button>
+        </div>
       </div>
 
       {/* Summary KPI Pills */}
@@ -131,13 +141,14 @@ export default function Attendance() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Attendance Table */}
       <Card className="p-0 overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Employee</TableHead>
               <TableHead>Department</TableHead>
+              <TableHead>Date</TableHead>
               <TableHead>Check In</TableHead>
               <TableHead>Check Out</TableHead>
               <TableHead>Worked Hours</TableHead>
@@ -150,6 +161,7 @@ export default function Attendance() {
               <TableRow key={rec.id}>
                 <TableCell className="font-semibold text-slate-900">{rec.employee}</TableCell>
                 <TableCell className="text-slate-500 text-xs">{rec.department}</TableCell>
+                <TableCell className="text-xs font-mono text-slate-600">{rec.date}</TableCell>
                 <TableCell className="text-xs font-mono text-slate-700">{rec.check_in}</TableCell>
                 <TableCell className="text-xs font-mono text-slate-700">{rec.check_out}</TableCell>
                 <TableCell className="text-xs font-mono font-medium text-slate-900">
@@ -166,6 +178,113 @@ export default function Attendance() {
           </TableBody>
         </Table>
       </Card>
+
+      {/* Manual Correction Form Dialog (B3) */}
+      <Dialog open={isManualModalOpen} onOpenChange={setIsManualModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Manual Attendance Correction</DialogTitle>
+            <DialogDescription>
+              Record an authorized punch correction or missing shift entry for an employee.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleManualSubmit} className="space-y-3 py-2 text-xs">
+            <div className="space-y-1">
+              <label className="font-medium text-slate-700">Select Employee</label>
+              <select
+                value={manualForm.employee}
+                onChange={(e) => {
+                  const emp = employees.find(emp => emp.name === e.target.value)
+                  setManualForm({
+                    ...manualForm,
+                    employee: e.target.value,
+                    department: emp?.department || 'Engineering'
+                  })
+                }}
+                className="flex h-8 w-full rounded-lg border-0 bg-slate-100/90 px-2.5 py-1 text-xs text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#714b67]/25"
+              >
+                {employees.map(e => (
+                  <option key={e.id} value={e.name}>{e.name} ({e.department})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="font-medium text-slate-700">Date</label>
+                <Input
+                  type="date"
+                  value={manualForm.date}
+                  onChange={(e) => setManualForm({ ...manualForm, date: e.target.value })}
+                  className="h-8 text-xs bg-slate-50"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-medium text-slate-700">Status</label>
+                <select
+                  value={manualForm.status}
+                  onChange={(e) => setManualForm({ ...manualForm, status: e.target.value })}
+                  className="flex h-8 w-full rounded-lg border-0 bg-slate-100/90 px-2.5 py-1 text-xs text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#714b67]/25"
+                >
+                  <option value="Present">Present</option>
+                  <option value="Late">Late</option>
+                  <option value="On Leave">On Leave</option>
+                  <option value="Absent">Absent</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="font-medium text-slate-700">Check In Time</label>
+                <Input
+                  value={manualForm.check_in}
+                  onChange={(e) => setManualForm({ ...manualForm, check_in: e.target.value })}
+                  className="h-8 text-xs bg-slate-50 font-mono"
+                  placeholder="09:00 AM"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-medium text-slate-700">Check Out Time</label>
+                <Input
+                  value={manualForm.check_out}
+                  onChange={(e) => setManualForm({ ...manualForm, check_out: e.target.value })}
+                  className="h-8 text-xs bg-slate-50 font-mono"
+                  placeholder="06:00 PM"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-medium text-slate-700">Reason / Correction Note</label>
+              <Input
+                value={manualForm.notes}
+                onChange={(e) => setManualForm({ ...manualForm, notes: e.target.value })}
+                placeholder="e.g. Biometric terminal offline at gate 2"
+                className="h-8 text-xs bg-slate-50"
+              />
+            </div>
+
+            <DialogFooter className="gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsManualModalOpen(false)}
+                className="h-7 text-xs"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" className="h-7 text-xs">
+                Save Attendance Record
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

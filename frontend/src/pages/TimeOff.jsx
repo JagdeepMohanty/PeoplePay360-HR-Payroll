@@ -1,65 +1,86 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import {
   Umbrella, Plus, CheckCircle2, XCircle, Clock, Calendar,
   AlertTriangle, Filter, Search
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { usePayroll } from '@/context/PayrollContext'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import client from '../api/client'
-
-const mockRequests = [
-  { id: 1, employee: 'Vikram Singh', department: 'Operations', leave_type: 'Paid Time Off (PTO)', start_date: '2026-09-04', end_date: '2026-09-08', days: 4, reason: 'Family function', status: 'Pending' },
-  { id: 2, employee: 'Sneha Reddy', department: 'Marketing', leave_type: 'Sick Leave', start_date: '2026-09-02', end_date: '2026-09-03', days: 2, reason: 'Viral fever', status: 'Approved' },
-  { id: 3, employee: 'Rohan Verma', department: 'Sales', leave_type: 'Casual Leave', start_date: '2026-09-15', end_date: '2026-09-16', days: 2, reason: 'Personal errands', status: 'Pending' },
-  { id: 4, employee: 'Ananya Iyer', department: 'Engineering', leave_type: 'Paid Time Off (PTO)', start_date: '2026-08-20', end_date: '2026-08-22', days: 3, reason: 'Travel', status: 'Approved' },
-  { id: 5, employee: 'Aarav Sharma', department: 'Engineering', leave_type: 'Comp Off', start_date: '2026-08-10', end_date: '2026-08-10', days: 1, reason: 'Weekend release support', status: 'Approved' },
-]
-
-const mockBalances = [
-  { type: 'Paid Time Off (PTO)', allocated: 18, used: 6, remaining: 12 },
-  { type: 'Sick Leave', allocated: 12, used: 3, remaining: 9 },
-  { type: 'Casual Leave', allocated: 10, used: 4, remaining: 6 },
-  { type: 'Compensatory Off', allocated: 4, used: 1, remaining: 3 },
-]
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogDescription, DialogFooter
+} from '@/components/ui/dialog'
 
 export default function TimeOff() {
-  const [requests, setRequests] = useState(mockRequests)
+  const {
+    timeOffRequests,
+    leaveBalances,
+    createTimeOffRequest,
+    approveTimeOffRequest,
+    refuseTimeOffRequest,
+    employees,
+    permissions
+  } = usePayroll()
+
   const [searchTerm, setSearchTerm] = useState('')
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const handleAction = (id, newStatus) => {
-    setRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r))
-    )
-  }
+  // Leave Request Form State (B4)
+  const [newRequest, setNewRequest] = useState({
+    employee: employees[0]?.name || 'Aarav Sharma',
+    department: employees[0]?.department || 'Engineering',
+    leave_type: 'Paid Time Off (PTO)',
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: new Date().toISOString().split('T')[0],
+    days: 1,
+    reason: '',
+  })
 
-  const filteredRequests = requests.filter(
+  const filteredRequests = timeOffRequests.filter(
     (r) =>
       r.employee.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.leave_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.department.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  const handleCreateSubmit = (e) => {
+    e.preventDefault()
+    createTimeOffRequest(newRequest)
+    setIsModalOpen(false)
+    setNewRequest({
+      employee: employees[0]?.name || 'Aarav Sharma',
+      department: employees[0]?.department || 'Engineering',
+      leave_type: 'Paid Time Off (PTO)',
+      start_date: new Date().toISOString().split('T')[0],
+      end_date: new Date().toISOString().split('T')[0],
+      days: 1,
+      reason: '',
+    })
+  }
+
   return (
     <div className="space-y-4">
       {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">Time Off Management</h1>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">Time Off Requests</h1>
           <p className="text-xs text-slate-500">Employee leave requests, approvals, and allocation balances.</p>
         </div>
-        <Button className="gap-1.5 font-medium shadow-xs">
+        <Button
+          onClick={() => setIsModalOpen(true)}
+          className="gap-1.5 font-medium shadow-xs"
+        >
           <Plus className="h-3.5 w-3.5" /> New Leave Request
         </Button>
       </div>
 
-      {/* Leave Balances Grid */}
+      {/* Leave Balances Grid (Automatically updates when approved!) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {mockBalances.map((b) => (
+        {leaveBalances.map((b) => (
           <Card key={b.type}>
             <CardContent className="p-4">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
@@ -68,7 +89,7 @@ export default function TimeOff() {
               <div className="flex items-baseline justify-between mt-1.5">
                 <span className="text-xl font-bold tabular-nums text-slate-900">
                   {b.remaining}{' '}
-                  <span className="text-xs font-normal text-slate-500">days left</span>
+                  <span className="text-xs font-normal text-slate-500">days remaining</span>
                 </span>
                 <span className="text-[11px] text-slate-500">
                   {b.used}/{b.allocated} used
@@ -76,8 +97,8 @@ export default function TimeOff() {
               </div>
               <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2.5 overflow-hidden">
                 <div
-                  className="bg-[#714b67] h-full rounded-full"
-                  style={{ width: `${(b.used / b.allocated) * 100}%` }}
+                  className="bg-[#714b67] h-full rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(100, (b.used / b.allocated) * 100)}%` }}
                 />
               </div>
             </CardContent>
@@ -89,8 +110,12 @@ export default function TimeOff() {
       <Tabs defaultValue="requests" className="space-y-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <TabsList className="bg-slate-100 p-0.5 rounded-full border-0">
-            <TabsTrigger value="requests" className="text-xs rounded-full px-4">Leave Requests</TabsTrigger>
-            <TabsTrigger value="policy" className="text-xs rounded-full px-4">Leave Policy</TabsTrigger>
+            <TabsTrigger value="requests" className="text-xs rounded-full px-4">
+              Leave Requests ({filteredRequests.length})
+            </TabsTrigger>
+            <TabsTrigger value="policy" className="text-xs rounded-full px-4">
+              Leave Policy Rules
+            </TabsTrigger>
           </TabsList>
 
           <div className="relative w-full sm:w-64">
@@ -112,7 +137,7 @@ export default function TimeOff() {
                   <TableHead>Employee</TableHead>
                   <TableHead>Leave Type</TableHead>
                   <TableHead>Dates</TableHead>
-                  <TableHead>Days</TableHead>
+                  <TableHead>Duration</TableHead>
                   <TableHead>Reason</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -151,25 +176,32 @@ export default function TimeOff() {
                     <TableCell className="text-right">
                       {req.status === 'Pending' ? (
                         <div className="flex items-center justify-end gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="teal"
-                            onClick={() => handleAction(req.id, 'Approved')}
-                            className="h-6 px-2.5 text-[11px] rounded-full"
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleAction(req.id, 'Refused')}
-                            className="h-6 px-2.5 text-[11px] rounded-full"
-                          >
-                            Refuse
-                          </Button>
+                          {permissions.canApproveLeave && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="teal"
+                                onClick={() => approveTimeOffRequest(req.id)}
+                                className="h-6 px-2.5 text-[11px] rounded-full"
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => refuseTimeOffRequest(req.id)}
+                                className="h-6 px-2.5 text-[11px] rounded-full"
+                              >
+                                Refuse
+                              </Button>
+                            </>
+                          )}
+                          {!permissions.canApproveLeave && (
+                            <span className="text-xs text-amber-600 font-medium">Awaiting Manager</span>
+                          )}
                         </div>
                       ) : (
-                        <span className="text-xs text-slate-400">Processed</span>
+                        <span className="text-xs text-slate-400">Archived</span>
                       )}
                     </TableCell>
                   </TableRow>
@@ -201,6 +233,117 @@ export default function TimeOff() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dynamic New Leave Request Form Dialog (B4) */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Submit Time Off Request</DialogTitle>
+            <DialogDescription>
+              Select employee, leave allocation category, dates, and reason for manager approval.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateSubmit} className="space-y-3 py-2 text-xs">
+            <div className="space-y-1">
+              <label className="font-medium text-slate-700">Employee</label>
+              <select
+                value={newRequest.employee}
+                onChange={(e) => {
+                  const emp = employees.find(emp => emp.name === e.target.value)
+                  setNewRequest({
+                    ...newRequest,
+                    employee: e.target.value,
+                    department: emp?.department || 'Engineering'
+                  })
+                }}
+                className="flex h-8 w-full rounded-lg border-0 bg-slate-100/90 px-2.5 py-1 text-xs text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#714b67]/25"
+              >
+                {employees.map(e => (
+                  <option key={e.id} value={e.name}>{e.name} ({e.department})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-medium text-slate-700">Leave Type</label>
+              <select
+                value={newRequest.leave_type}
+                onChange={(e) => setNewRequest({ ...newRequest, leave_type: e.target.value })}
+                className="flex h-8 w-full rounded-lg border-0 bg-slate-100/90 px-2.5 py-1 text-xs text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#714b67]/25"
+              >
+                <option value="Paid Time Off (PTO)">Paid Time Off (PTO)</option>
+                <option value="Sick Leave">Sick Leave</option>
+                <option value="Casual Leave">Casual Leave</option>
+                <option value="Compensatory Off">Compensatory Off</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="font-medium text-slate-700">Start Date</label>
+                <Input
+                  type="date"
+                  required
+                  value={newRequest.start_date}
+                  onChange={(e) => setNewRequest({ ...newRequest, start_date: e.target.value })}
+                  className="h-8 text-xs bg-slate-50"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="font-medium text-slate-700">End Date</label>
+                <Input
+                  type="date"
+                  required
+                  value={newRequest.end_date}
+                  onChange={(e) => setNewRequest({ ...newRequest, end_date: e.target.value })}
+                  className="h-8 text-xs bg-slate-50"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="font-medium text-slate-700">Duration (Days)</label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="30"
+                  required
+                  value={newRequest.days}
+                  onChange={(e) => setNewRequest({ ...newRequest, days: Number(e.target.value) })}
+                  className="h-8 text-xs bg-slate-50 font-mono"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="font-medium text-slate-700">Reason / Notes</label>
+                <Input
+                  required
+                  value={newRequest.reason}
+                  onChange={(e) => setNewRequest({ ...newRequest, reason: e.target.value })}
+                  placeholder="e.g. Doctor appointment"
+                  className="h-8 text-xs bg-slate-50"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsModalOpen(false)}
+                className="h-7 text-xs"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" className="h-7 text-xs">
+                Submit Request
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
