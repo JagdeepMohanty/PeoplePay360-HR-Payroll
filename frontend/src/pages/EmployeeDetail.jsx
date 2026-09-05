@@ -1,192 +1,145 @@
-import { useQuery } from '@tanstack/react-query'
-import { useParams, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react'
+import { getEmployee } from '../api/employees'
+import SmartButtons from '../components/SmartButtons'
 import {
-  ArrowLeft, Mail, Phone, Building2, MapPin, Calendar,
-  Clock, FileText, Umbrella, Shield, CheckCircle2, DollarSign
+  Users,
+  ArrowLeft,
+  Mail,
+  Building,
+  Briefcase,
+  CreditCard,
+  Calendar,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react'
-import { getEmployees } from '../api/employees'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 
 export default function EmployeeDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
+  const [employee, setEmployee] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const { data: employees } = useQuery({
-    queryKey: ['employees'],
-    queryFn: async () => {
-      try {
-        const res = await getEmployees()
-        return res?.data || []
-      } catch {
-        return []
-      }
-    },
-  })
+  useEffect(() => {
+    loadEmployee()
+  }, [id])
 
-  const employee = employees?.find((e) => String(e.id) === String(id)) || {
-    id: id || 1,
-    name: 'Aarav Sharma',
-    job_position: 'Tech Lead',
-    department: 'Engineering',
-    work_email: 'aarav.sharma@oxp.com',
-    work_phone: '+91 98765 43210',
-    manager_name: 'Vikram Mehta',
-    contract_type: 'Full-time Permanent',
-    wage: 175000,
-    date_joined: '12 Jan 2023',
-    status: 'Active',
+  const loadEmployee = async () => {
+    setLoading(true)
+    try {
+      const data = await getEmployee(id)
+      setEmployee(data)
+    } catch (err) {
+      console.error('Failed to load employee profile:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const getInitials = (name) => {
-    if (!name) return 'EM'
-    const parts = name.trim().split(' ')
-    return parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase()
+  if (loading) {
+    return (
+      <div className="p-8 text-center text-slate-400 text-sm">
+        Loading employee profile hub...
+      </div>
+    )
   }
+
+  if (!employee) {
+    return (
+      <div className="p-8 text-center text-red-400 text-sm space-y-4">
+        <div>Employee record not found.</div>
+        <button onClick={() => navigate('/employees')} className="px-4 py-2 rounded-xl bg-slate-800 text-white text-xs font-semibold">
+          Back to Directory
+        </button>
+      </div>
+    )
+  }
+
+  const empName = employee.full_name || `${employee.first_name} ${employee.last_name}`
 
   return (
-    <div className="space-y-4 max-w-5xl mx-auto">
-      {/* Odoo Form Action Bar */}
-      <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-        <div className="flex items-center gap-2">
-          <Link to="/employees">
-            <Button variant="outline" size="sm" className="gap-1 text-xs h-7">
-              <ArrowLeft className="h-3.5 w-3.5" /> Back
-            </Button>
-          </Link>
-          <Button size="sm" className="h-7 text-xs">
-            Edit
-          </Button>
-        </div>
+    <div className="space-y-6">
+      {/* Top Bar Navigation & Back Link */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => navigate('/employees')}
+          className="flex items-center space-x-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Directory</span>
+        </button>
 
-        {/* Odoo Smart Buttons */}
-        <div className="flex items-center gap-1.5">
-          <Link to="/timeoff">
-            <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs gap-2 border-slate-200">
-              <Umbrella className="h-3.5 w-3.5 text-[#714b67]" />
-              <div className="text-left">
-                <span className="text-[10px] text-slate-500 block leading-none">Time Off</span>
-                <span className="font-semibold text-slate-900 leading-none">14 Days</span>
-              </div>
-            </Button>
-          </Link>
-          <Link to="/attendance">
-            <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs gap-2 border-slate-200">
-              <Clock className="h-3.5 w-3.5 text-teal-600" />
-              <div className="text-left">
-                <span className="text-[10px] text-slate-500 block leading-none">Attendance</span>
-                <span className="font-semibold text-slate-900 leading-none">98.5%</span>
-              </div>
-            </Button>
-          </Link>
-          <Link to="/contracts">
-            <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs gap-2 border-slate-200">
-              <FileText className="h-3.5 w-3.5 text-blue-600" />
-              <div className="text-left">
-                <span className="text-[10px] text-slate-500 block leading-none">Contracts</span>
-                <span className="font-semibold text-slate-900 leading-none">1 Active</span>
-              </div>
-            </Button>
-          </Link>
-        </div>
+        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+          employee.is_active
+            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+            : 'bg-red-500/20 text-red-300 border-red-500/30'
+        }`}>
+          {employee.is_active ? 'ACTIVE EMPLOYEE' : 'INACTIVE'}
+        </span>
       </div>
 
-      {/* Main Odoo Sheet */}
-      <Card className="p-6">
-        {/* Header with Photo & Name */}
-        <div className="flex flex-col sm:flex-row items-start justify-between gap-5 pb-6 border-b border-slate-100">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16 border border-slate-200">
-              <AvatarFallback className="bg-[#714b67]/10 text-[#714b67] text-lg font-bold">
-                {getInitials(employee.name)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-slate-900">{employee.name}</h2>
-                <Badge variant="success" className="text-[10px]">
-                  {employee.status || 'Active'}
-                </Badge>
-              </div>
-              <p className="text-xs font-medium text-slate-600">
-                {employee.job_position} · {employee.department}
-              </p>
-              <div className="flex items-center gap-4 text-xs text-slate-500 pt-1">
-                <span className="flex items-center gap-1">
-                  <Mail className="h-3 w-3 text-slate-400" /> {employee.work_email}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Phone className="h-3 w-3 text-slate-400" /> {employee.work_phone}
-                </span>
-              </div>
+      {/* Header Info Panel */}
+      <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center space-x-4">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 text-white font-black text-2xl flex items-center justify-center shadow-lg shadow-brand-500/20">
+              {employee.first_name?.[0]}
+              {employee.last_name?.[0]}
+            </div>
+            <div>
+              <h2 className="text-2xl font-extrabold text-white">{empName}</h2>
+              <p className="text-sm font-semibold text-brand-400">{employee.job_position || 'Staff Member'}</p>
             </div>
           </div>
         </div>
 
-        {/* Form Fields 2-Column Notebook */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6">
-          {/* Column 1: Work Information */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-1.5">
-              Work Information
-            </h3>
-            <div className="space-y-2 text-xs">
-              <div className="grid grid-cols-3 py-1 border-b border-slate-50">
-                <span className="text-slate-500">Department</span>
-                <span className="col-span-2 font-medium text-slate-900">{employee.department}</span>
-              </div>
-              <div className="grid grid-cols-3 py-1 border-b border-slate-50">
-                <span className="text-slate-500">Job Position</span>
-                <span className="col-span-2 font-medium text-slate-900">{employee.job_position}</span>
-              </div>
-              <div className="grid grid-cols-3 py-1 border-b border-slate-50">
-                <span className="text-slate-500">Manager</span>
-                <span className="col-span-2 font-medium text-slate-900">{employee.manager_name || 'Vikram Mehta'}</span>
-              </div>
-              <div className="grid grid-cols-3 py-1 border-b border-slate-50">
-                <span className="text-slate-500">Work Location</span>
-                <span className="col-span-2 font-medium text-slate-900">Bangalore HQ</span>
-              </div>
-              <div className="grid grid-cols-3 py-1">
-                <span className="text-slate-500">Working Hours</span>
-                <span className="col-span-2 font-medium text-slate-900">Standard 40 hours/week</span>
-              </div>
+        {/* Module B2: SmartButtons Bar */}
+        <SmartButtons employee={employee} />
+
+        {/* Detailed Form View Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-800">
+          <div className="space-y-3 p-4 rounded-xl bg-slate-900/50 border border-slate-800 text-xs">
+            <h4 className="font-bold text-slate-300 uppercase tracking-wider">Identity & Role Details</h4>
+            
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> Email</span>
+              <span className="text-white font-semibold">{employee.email}</span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 flex items-center gap-1.5"><Building className="w-3.5 h-3.5" /> Department</span>
+              <span className="text-white font-semibold">{employee.department || 'Unassigned'}</span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5" /> Job Position</span>
+              <span className="text-white font-semibold">{employee.job_position}</span>
             </div>
           </div>
 
-          {/* Column 2: Compensation & Payroll */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-1.5">
-              Payroll & Contract Details
-            </h3>
-            <div className="space-y-2 text-xs">
-              <div className="grid grid-cols-3 py-1 border-b border-slate-50">
-                <span className="text-slate-500">Contract Type</span>
-                <span className="col-span-2 font-medium text-slate-900">{employee.contract_type || 'Permanent'}</span>
-              </div>
-              <div className="grid grid-cols-3 py-1 border-b border-slate-50">
-                <span className="text-slate-500">Monthly Wage</span>
-                <span className="col-span-2 font-semibold text-[#714b67] tabular-nums">
-                  ₹{employee.wage ? employee.wage.toLocaleString('en-IN') : '1,75,000'}
+          <div className="space-y-3 p-4 rounded-xl bg-slate-900/50 border border-slate-800 text-xs">
+            <h4 className="font-bold text-slate-300 uppercase tracking-wider">Work Schedule & Financials</h4>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Working Schedule</span>
+              <span className="text-white font-semibold">Standard 40h Full-Time</span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5" /> Bank Account</span>
+              {employee.bank_account ? (
+                <span className="text-emerald-400 font-mono font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> {employee.bank_account}
                 </span>
-              </div>
-              <div className="grid grid-cols-3 py-1 border-b border-slate-50">
-                <span className="text-slate-500">PF Number</span>
-                <span className="col-span-2 font-mono text-slate-700">101293847562</span>
-              </div>
-              <div className="grid grid-cols-3 py-1 border-b border-slate-50">
-                <span className="text-slate-500">Bank Account</span>
-                <span className="col-span-2 font-mono text-slate-700">HDFC •••• 4829</span>
-              </div>
-              <div className="grid grid-cols-3 py-1">
-                <span className="text-slate-500">Joining Date</span>
-                <span className="col-span-2 font-medium text-slate-900">{employee.date_joined || '12 Jan 2023'}</span>
-              </div>
+              ) : (
+                <span className="text-amber-400 font-bold flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" /> Missing Bank Account
+                </span>
+              )}
             </div>
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   )
 }

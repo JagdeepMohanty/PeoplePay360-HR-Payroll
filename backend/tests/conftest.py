@@ -1,20 +1,22 @@
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+# Ensure backend directory is first in sys.path
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.main import app
-from backend.database import Base, get_db
-from backend.config import Settings
+from main import app
+from database import Base, get_db
+from models.user import UserRole
 
 # ---------------------------------------------------------------------------
 # Test configuration
 # ---------------------------------------------------------------------------
-# Use an isolated SQLite database for tests. This can be in‑memory or a file.
-# In‑memory is faster, but each fixture must recreate the schema.
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite:///./test_db.sqlite")
 
 engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
@@ -45,46 +47,48 @@ def db_session():
 
 @pytest.fixture()
 def client(db_session):
-    """FastAPI test client that uses the overridden ``get_db`` dependency."""
-    # Override the dependency that provides a DB session.
+    """FastAPI test client that uses overridden dependencies."""
     def override_get_db():
         try:
             yield db_session
         finally:
             pass
+
     app.dependency_overrides[get_db] = override_get_db
-    # Override authentication for tests
-    from backend.auth.dependencies import get_current_user
+
+    from auth import get_current_user, require_hr_manager
     def override_get_current_user():
         class DummyUser:
             id = 1
-            role = "HR_OFFICER"
+            email = "admin@peoplepay360.dev"
+            role = UserRole.ADMIN
             is_active = True
+            employee_id = 1
         return DummyUser()
+
     app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[require_hr_manager] = override_get_current_user
+
     with TestClient(app) as c:
         yield c
-    # Clean up the overrides after the test.
-    app.dependency_overrides.pop(get_db, None)
-    app.dependency_overrides.pop(get_current_user, None)
+
+    app.dependency_overrides.clear()
 
 # ---------------------------------------------------------------------------
-# Helper data fixtures – simple objects that can be used in tests.
+# Helper data fixtures
 # ---------------------------------------------------------------------------
 @pytest.fixture()
 def example_employee(client):
     payload = {
-        "name": "Alice Example",
-        "employee_code": "EMP001",
+        "first_name": "Alice",
+        "last_name": "Example",
+        "email": "alice.test@example.com",
         "department": "Engineering",
-        "job_title": "Developer",
-        "joining_date": "2023-01-15",
-        "email": "alice@example.com",
-        "bank_account": "1234567890",
+        "job_position": "Developer",
+        "bank_account": "GB1234567890",
+        "is_active": True,
     }
-    response = client.post("/employees/", json=payload)
+    response = client.post("/api/v1/employees/", json=payload)
     assert response.status_code == 201, response.text
     return response.json()
 
-# Additional fixtures for contracts, attendance, leaves, users, payruns can be added
-# later as needed.

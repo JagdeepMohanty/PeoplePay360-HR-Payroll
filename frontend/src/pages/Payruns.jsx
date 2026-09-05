@@ -1,131 +1,122 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
-import {
-  DollarSign, Plus, Search, Calendar, ArrowRight,
-  CheckCircle2, Sparkles, FileCheck
-} from 'lucide-react'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import client from '../api/client'
-import PayrunWizardModal from '../components/payroll/payrun/PayrunWizardModal'
-
-const mockPayruns = [
-  { id: 101, name: 'Payrun - August 2026 Regular', period_start: '2026-08-01', period_end: '2026-08-31', department: 'All Departments', state: 'confirmed', total_employees: 48, total_net: 98300 },
-  { id: 102, name: 'Payrun - July 2026 Regular', period_start: '2026-07-01', period_end: '2026-07-31', department: 'All Departments', state: 'confirmed', total_employees: 46, total_net: 95500 },
-  { id: 103, name: 'Payrun - September 2026 (Engineering)', period_start: '2026-09-01', period_end: '2026-09-30', department: 'Engineering', state: 'computed', total_employees: 18, total_net: 43500 },
-]
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { getPayruns } from '../api/payruns'
+import PayrunWizardModal from '../components/PayrunWizardModal'
+import { DollarSign, Plus, ChevronRight, Layers, Calendar, CheckCircle2 } from 'lucide-react'
 
 export default function Payruns() {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [showWizard, setShowWizard] = useState(false)
+  const [payruns, setPayruns] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [isWizardOpen, setIsWizardOpen] = useState(false)
+  const navigate = useNavigate()
 
-  const { data: payrunsData } = useQuery({
-    queryKey: ['payruns'],
-    queryFn: async () => {
-      try {
-        const res = await client.get('/api/v1/payruns')
-        return res?.data?.length ? res.data : mockPayruns
-      } catch {
-        return mockPayruns
-      }
-    },
-    initialData: mockPayruns,
-  })
+  useEffect(() => {
+    loadPayruns()
+  }, [])
 
-  const records = payrunsData || mockPayruns
+  const loadPayruns = async () => {
+    setLoading(true)
+    try {
+      const data = await getPayruns()
+      setPayruns(data || [])
+    } catch (err) {
+      console.error('Failed to load payruns:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const filtered = records.filter((p) =>
-    (p.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const handleWizardSuccess = (newPayrun) => {
+    setIsWizardOpen(false)
+    navigate(`/payruns/${newPayrun.id}/process`)
+  }
 
-  const formatCurrency = (amount) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(amount)
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'DRAFT':
+        return 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+      case 'COMPUTED':
+        return 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+      case 'VALIDATED':
+      case 'PAID':
+        return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+      default:
+        return 'bg-slate-700 text-slate-300 border-slate-600'
+    }
+  }
 
   return (
-    <div className="space-y-4">
-      {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl glass-panel border border-slate-800">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">Payroll Runs</h1>
-          <p className="text-xs text-slate-500 font-medium">Calculate employee salary sheets, biometric deductions, and payouts.</p>
+          <h2 className="text-2xl font-extrabold text-white flex items-center gap-2">
+            <DollarSign className="w-7 h-7 text-emerald-400" />
+            <span>Payroll Batches & Payruns (Module B5)</span>
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Launch payrun wizard, compute batch salary rules, and process itemized payslips
+          </p>
         </div>
-        <Button onClick={() => setShowWizard(true)} className="gap-1.5 font-semibold shadow-xs bg-blue-600 hover:bg-blue-700 text-white">
-          <Plus className="h-3.5 w-3.5" /> Generate Payrun
-        </Button>
+
+        <button
+          onClick={() => setIsWizardOpen(true)}
+          className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/20"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Create Payrun Batch</span>
+        </button>
       </div>
 
-      {/* Search Toolbar */}
-      <div className="flex items-center justify-between">
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search payrun batch..."
-            className="pl-8 h-8 text-xs bg-white shadow-xs"
-          />
-        </div>
-      </div>
-
-      {/* Payrun History Table */}
-      <Card className="p-0 overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Payrun Batch</TableHead>
-              <TableHead>Period</TableHead>
-              <TableHead className="text-center">Staff Count</TableHead>
-              <TableHead className="text-right">Total Net Payout</TableHead>
-              <TableHead className="text-center">Status</TableHead>
-              <TableHead className="text-right">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((pr) => (
-              <TableRow key={pr.id}>
-                <TableCell className="font-semibold text-slate-900">
-                  <div className="flex items-center gap-2">
-                    <FileCheck className="h-4 w-4 text-[#714b67]" />
-                    <span>{pr.name || `Payrun #${pr.id}`}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-xs font-mono text-slate-600">
+      {/* Payruns List Table */}
+      <div className="overflow-hidden rounded-2xl glass-panel border border-slate-800 shadow-xl">
+        <table className="w-full text-left text-xs">
+          <thead className="bg-slate-900 text-slate-400 uppercase font-semibold border-b border-slate-800">
+            <tr>
+              <th className="px-4 py-3">Payrun Batch Name</th>
+              <th className="px-4 py-3">Pay Period</th>
+              <th className="px-4 py-3">Assigned Structure</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/80 text-slate-200">
+            {payruns.map((pr) => (
+              <tr
+                key={pr.id}
+                onClick={() => navigate(`/payruns/${pr.id}/process`)}
+                className="hover:bg-slate-900/40 cursor-pointer transition-colors group"
+              >
+                <td className="px-4 py-3 font-bold text-white group-hover:text-brand-300">
+                  {pr.name || `Payrun #${pr.id}`}
+                </td>
+                <td className="px-4 py-3 font-mono">
                   {pr.period_start} → {pr.period_end}
-                </TableCell>
-                <TableCell className="text-center text-xs text-slate-700 font-semibold">
-                  {pr.total_employees || pr.employee_count || 1} staff
-                </TableCell>
-                <TableCell className="text-right tabular-nums font-bold text-slate-900">
-                  {formatCurrency(pr.total_net || 0)}
-                </TableCell>
-                <TableCell className="text-center">
-                  <Badge variant={pr.state === 'confirmed' || pr.status === 'Paid' ? 'success' : 'warning'}>
-                    {pr.state || pr.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Link to={`/payruns/${pr.id}/process`}>
-                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1 text-blue-600 hover:text-blue-800 font-semibold">
-                      Open <ArrowRight className="h-3 w-3" />
-                    </Button>
-                  </Link>
-                </TableCell>
-              </TableRow>
+                </td>
+                <td className="px-4 py-3 text-brand-300">Regular Monthly Structure</td>
+                <td className="px-4 py-3">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStatusBadge(pr.status)}`}>
+                    {pr.status || 'DRAFT'}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <button className="flex items-center space-x-1 ml-auto px-3 py-1 rounded-lg bg-brand-600/30 hover:bg-brand-600 text-white font-semibold text-xs border border-brand-500/30">
+                    <span>Process Batch</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
-      </Card>
+          </tbody>
+        </table>
+      </div>
 
-      {/* PART A: 2-Step Payrun Creation Wizard */}
-      {showWizard && <PayrunWizardModal onClose={() => setShowWizard(false)} />}
+      {/* Wizard Modal */}
+      <PayrunWizardModal
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        onSuccess={handleWizardSuccess}
+      />
     </div>
   )
 }

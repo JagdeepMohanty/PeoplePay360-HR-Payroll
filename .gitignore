@@ -1,16 +1,6 @@
-# Node / Frontend
-node_modules/
-**/node_modules/
-dist/
-**/dist/
-dist-ssr/
-*.local
-.npm
-.vite
-
 # Python / Backend
 __pycache__/
-**/__pycache__/
+/**/__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -20,14 +10,26 @@ venv/
 .venv/
 ENV/
 *.sqlite3
+*.sqlite
+*.db
+.pytest_cache/
 
-# Logs & Environment
+
+# Node / Frontend
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+dist-ssr/
+*.local
+.npm
+.vite
 *.log
+
+# Environment & IDE
 .env
 .env.*
 !.env.example
-
-# IDE & OS
 .vscode/
 .idea/
 .DS_Store

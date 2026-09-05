@@ -1,28 +1,77 @@
+from typing import Optional, List
 from pydantic import BaseModel
+from models.payroll import RuleCategory, PayrunStatus
 
 
-class PayrunCreate(BaseModel):
+class SalaryRuleBase(BaseModel):
+    name: str
+    code: str
+    category: RuleCategory = RuleCategory.BASIC
+    sequence: int = 1
+    amount_type: str = "FIXED"
+    amount_value: float = 0.0
+
+
+class SalaryRuleCreate(SalaryRuleBase):
+    structure_id: Optional[int] = None
+
+
+class SalaryRuleRead(SalaryRuleBase):
+    id: int
+    structure_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class SalaryStructureBase(BaseModel):
+    name: str
+    is_active: bool = True
+
+
+class SalaryStructureCreate(SalaryStructureBase):
+    pass
+
+
+class SalaryStructureRead(SalaryStructureBase):
+    id: int
+    rules: List[SalaryRuleRead] = []
+
+    class Config:
+        from_attributes = True
+
+
+class PayrunBase(BaseModel):
+    name: str
+    structure_id: Optional[int] = None
     period_start: str
     period_end: str
-    department: str | None = None
 
 
-class PayrunRead(PayrunCreate):
+class PayrunCreate(PayrunBase):
+    pass
+
+
+class PayrunRead(PayrunBase):
     id: int
-    state: str
+    status: PayrunStatus
 
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True
 
 
 class PayslipRead(BaseModel):
     id: int
     payrun_id: int
     employee_id: int
-    basic_pay: float
+    contract_id: int
+    basic: float
     allowances: float
-    gross: float
     deductions: float
-    net_pay: float
-    breakdown: str
+    gross: float
+    net: float
+    worked_days: float
+    breakdown_json: str
 
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True

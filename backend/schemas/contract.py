@@ -1,21 +1,16 @@
-from pydantic import BaseModel, validator
-from datetime import date
-from ..enums import ContractState, WorkingSchedule
+from typing import Optional
+from pydantic import BaseModel
 
 
 class ContractBase(BaseModel):
     employee_id: int
     wage: float
-    state: ContractState = ContractState.DRAFT
-    working_schedule: WorkingSchedule
-    date_start: date
-    date_end: date | None = None
-
-    @validator('date_end')
-    def end_after_start(cls, v, values):
-        if v and 'date_start' in values and v < values['date_start']:
-            raise ValueError('date_end must be after date_start')
-        return v
+    date_start: str
+    date_end: Optional[str] = None
+    department: Optional[str] = None
+    job_position: Optional[str] = None
+    salary_structure_id: Optional[int] = None
+    is_active: bool = True
 
 
 class ContractCreate(ContractBase):
@@ -25,4 +20,5 @@ class ContractCreate(ContractBase):
 class ContractRead(ContractBase):
     id: int
 
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True

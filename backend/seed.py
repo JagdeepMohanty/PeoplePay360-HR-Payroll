@@ -1,46 +1,38 @@
 """
-Seed Script — PeoplePay360
+Seed Script — PeoplePay360 Modules A1–A7 & Phase 1 Refactor
 Run: python seed.py
-Clears all tables and inserts fresh demo data.
+Clears all tables and populates fresh master configuration data.
 """
-import json
 from datetime import datetime
 
-from .database import Base, engine, SessionLocal
+from database import Base, engine, SessionLocal
+from auth import get_password_hash
+from models.user import User, UserRole
+from models.working_schedule import WorkingSchedule, WorkScheduleInterval
 from models.employee import Employee
 from models.contract import Contract
 from models.attendance import Attendance
-from models.leave import Leave, LeaveAllocation
-from models.payroll import Payrun, Payslip
+from models.leave import TimeOffType, LeaveAllocation, LeaveRequest, LeaveStatus
+from models.payroll import SalaryStructure, SalaryRule, Payrun, Payslip, RuleCategory, PayrunStatus
 
 CURRENT_YEAR = 2025
-
-
-# ---------------------------------------------------------------------------
-# Salary structure stored as plain dicts — no ORM model yet, kept in seed
-# so the salary engine can reference the rule definitions by name.
-# ---------------------------------------------------------------------------
-SALARY_STRUCTURE = {
-    "name": "Regular Monthly",
-    "rules": [
-        {"sequence": 1,  "code": "BASIC",         "name": "Basic Pay",          "rate": 1.00,  "base": "wage"},
-        {"sequence": 2,  "code": "ALLOWANCE",      "name": "Housing & Transport","rate": 0.15,  "base": "BASIC"},
-        {"sequence": 3,  "code": "GROSS",          "name": "Gross Pay",          "rate": None,  "base": "BASIC+ALLOWANCE"},
-        {"sequence": 4,  "code": "LOP_DEDUCTION",  "name": "Loss of Pay",        "rate": None,  "base": "daily_rate*lop_days"},
-        {"sequence": 5,  "code": "NET",            "name": "Net Pay",            "rate": None,  "base": "GROSS-deductions"},
-    ],
-}
 
 
 def clear_tables(db):
     """Delete all rows in dependency-safe order."""
     db.query(Payslip).delete()
     db.query(Payrun).delete()
+    db.query(SalaryRule).delete()
+    db.query(SalaryStructure).delete()
+    db.query(LeaveRequest).delete()
     db.query(LeaveAllocation).delete()
-    db.query(Leave).delete()
+    db.query(TimeOffType).delete()
     db.query(Attendance).delete()
     db.query(Contract).delete()
+    db.query(User).delete()
     db.query(Employee).delete()
+    db.query(WorkScheduleInterval).delete()
+    db.query(WorkingSchedule).delete()
     db.commit()
 
 
@@ -50,180 +42,293 @@ def seed():
         print("Clearing existing data…")
         clear_tables(db)
 
-        # ------------------------------------------------------------------ #
-        # 1. EMPLOYEES                                                         #
-        # ------------------------------------------------------------------ #
-        employees = [
-            Employee(
-                name="Alice Johnson",
-                department="Engineering",
-                job_title="Senior Software Engineer",
+        # 1. WORKING SCHEDULES & INTERVALS (Module A3)
+        schedule = WorkingSchedule(
+            name="Standard 40h Full-Time",
+            schedule_type="FULL_TIME",
+            stored_weekly_hours=40.0,
+        )
+        db.add(schedule)
+        db.flush()
+
+        intervals = [
+            WorkScheduleInterval(schedule_id=schedule.id, day_of_week=day, start_time="09:00", end_time="17:00", break_hours=0.0)
+            for day in range(5)
+        ]
+        db.add_all(intervals)
+        db.flush()
+        print(f"  [OK] Working Schedule: #{schedule.id} ({schedule.name}) -> Computed {schedule.weekly_hours} weekly hours")
+
+        # 2. EMPLOYEES (Module A1)
+        alice = Employee(
+            first_name="Alice",
+            last_name="Johnson",
+            email="alice.johnson@peoplepay360.dev",
+            department="Engineering",
+            job_position="Senior Software Engineer",
+            working_schedule_id=schedule.id,
+            bank_account="GB29NWBK60161331926819",
+            is_active=True,
+        )
+        bob = Employee(
+            first_name="Bob",
+            last_name="Martinez",
+            email="bob.martinez@peoplepay360.dev",
+            department="Human Resources",
+            job_position="HR Specialist",
+            working_schedule_id=schedule.id,
+            bank_account="GB82WEST12345698765432",
+            is_active=True,
+        )
+        carol = Employee(
+            first_name="Carol",
+            last_name="White",
+            email="carol.white@peoplepay360.dev",
+            department="Finance",
+            job_position="Payroll Analyst",
+            working_schedule_id=schedule.id,
+            bank_account="",  # Blank account triggers guardian warning
+            is_active=True,
+        )
+        db.add_all([alice, bob, carol])
+        db.flush()
+        print(f"  [OK] Employees: {alice.full_name}, {bob.full_name}, {carol.full_name}")
+
+        alice.manager_id = bob.id
+        db.flush()
+
+        # 3. USERS (5-TIER RBAC)
+        default_password_hash = get_password_hash("password123")
+        users = [
+            User(
+                email="admin@peoplepay360.dev",
+                hashed_password=default_password_hash,
+                role=UserRole.ADMIN,
+                employee_id=None,
+            ),
+            User(
+                email="hr.manager@peoplepay360.dev",
+                hashed_password=default_password_hash,
+                role=UserRole.HR_MANAGER,
+                employee_id=bob.id,
+            ),
+            User(
+                email="payroll.user@peoplepay360.dev",
+                hashed_password=default_password_hash,
+                role=UserRole.HR_PAYROLL_USER,
+                employee_id=carol.id,
+            ),
+            User(
+                email="payroll.manager@peoplepay360.dev",
+                hashed_password=default_password_hash,
+                role=UserRole.HR_PAYROLL_MANAGER,
+                employee_id=None,
+            ),
+            User(
                 email="alice.johnson@peoplepay360.dev",
-                bank_account="GB29NWBK60161331926819",
-            ),
-            Employee(
-                name="Bob Martinez",
-                department="Human Resources",
-                job_title="HR Specialist",
-                email="bob.martinez@peoplepay360.dev",
-                bank_account="GB82WEST12345698765432",
-            ),
-            Employee(
-                name="Carol White",
-                department="Finance",
-                job_title="Payroll Analyst",
-                email="carol.white@peoplepay360.dev",
-                bank_account="",   # intentionally blank → triggers Guardian warning
+                hashed_password=default_password_hash,
+                role=UserRole.EMPLOYEE,
+                employee_id=alice.id,
             ),
         ]
-        db.add_all(employees)
-        db.flush()   # assigns IDs without committing
+        db.add_all(users)
+        db.flush()
+        print(f"  [OK] Users created for all 5 roles: {[u.email for u in users]}")
 
-        alice, bob, carol = employees
-        print(f"  ✔ Employees: {[e.name for e in employees]}")
+        # 4. SALARY STRUCTURE & RULES
+        sal_struct = SalaryStructure(name="Regular Monthly", is_active=True)
+        db.add(sal_struct)
+        db.flush()
 
-        # ------------------------------------------------------------------ #
-        # 2. CONTRACTS                                                         #
-        # ------------------------------------------------------------------ #
-        contracts = [
-            # Expired past contract for Alice (should NOT be picked by payrun)
-            Contract(
-                employee_id=alice.id,
-                wage=6000.00,
-                state="expired",
-                date_start="2023-01-01",
-                date_end="2024-12-31",
+        rules = [
+            SalaryRule(
+                structure_id=sal_struct.id,
+                name="Basic Pay",
+                code="BASIC",
+                category=RuleCategory.BASIC,
+                sequence=1,
+                amount_type="FIXED",
+                amount_value=0.0,
             ),
-            # Active contract for Alice — valid for 2025 payrun period
+            SalaryRule(
+                structure_id=sal_struct.id,
+                name="Housing & Transport Allowance",
+                code="ALLOWANCE",
+                category=RuleCategory.ALLOWANCE,
+                sequence=2,
+                amount_type="PERCENTAGE",
+                amount_value=15.0,
+            ),
+            SalaryRule(
+                structure_id=sal_struct.id,
+                name="Gross Pay",
+                code="GROSS",
+                category=RuleCategory.GROSS,
+                sequence=3,
+                amount_type="CODE",
+                amount_value=0.0,
+            ),
+            SalaryRule(
+                structure_id=sal_struct.id,
+                name="Loss of Pay",
+                code="LOP_DEDUCTION",
+                category=RuleCategory.DEDUCTION,
+                sequence=4,
+                amount_type="CODE",
+                amount_value=0.0,
+            ),
+            SalaryRule(
+                structure_id=sal_struct.id,
+                name="Income Tax",
+                code="INCOME_TAX",
+                category=RuleCategory.DEDUCTION,
+                sequence=5,
+                amount_type="PERCENTAGE",
+                amount_value=7.0,
+            ),
+            SalaryRule(
+                structure_id=sal_struct.id,
+                name="Social Security",
+                code="SOCIAL_SEC",
+                category=RuleCategory.DEDUCTION,
+                sequence=6,
+                amount_type="PERCENTAGE",
+                amount_value=3.0,
+            ),
+            SalaryRule(
+                structure_id=sal_struct.id,
+                name="Net Pay",
+                code="NET",
+                category=RuleCategory.NET,
+                sequence=7,
+                amount_type="CODE",
+                amount_value=0.0,
+            ),
+        ]
+        db.add_all(rules)
+        db.flush()
+
+        # 5. CONTRACTS
+        contracts = [
             Contract(
                 employee_id=alice.id,
                 wage=8500.00,
-                state="running",
                 date_start="2025-01-01",
                 date_end=None,
+                department=alice.department,
+                job_position=alice.job_position,
+                salary_structure_id=sal_struct.id,
+                is_active=True,
             ),
-            # Active contract for Bob
             Contract(
                 employee_id=bob.id,
                 wage=5800.00,
-                state="running",
                 date_start="2024-06-01",
                 date_end=None,
+                department=bob.department,
+                job_position=bob.job_position,
+                salary_structure_id=sal_struct.id,
+                is_active=True,
             ),
-            # Active contract for Carol
             Contract(
                 employee_id=carol.id,
                 wage=6400.00,
-                state="running",
                 date_start="2025-01-15",
                 date_end=None,
+                department=carol.department,
+                job_position=carol.job_position,
+                salary_structure_id=sal_struct.id,
+                is_active=True,
             ),
         ]
         db.add_all(contracts)
         db.flush()
-        print(f"  ✔ Contracts: {len(contracts)} (1 expired, 3 running)")
 
-        # ------------------------------------------------------------------ #
-        # 3. LEAVE ALLOCATIONS  (year = CURRENT_YEAR)                         #
-        # ------------------------------------------------------------------ #
+        # 6. TIME OFF TYPES & LEAVE ALLOCATIONS
+        paid_leave = TimeOffType(name="Paid Leave", unit="days", requires_allocation=True, is_unpaid=False)
+        unpaid_leave = TimeOffType(name="Unpaid Leave", unit="days", requires_allocation=True, is_unpaid=True)
+        sick_leave = TimeOffType(name="Sick Leave", unit="days", requires_allocation=True, is_unpaid=False)
+        db.add_all([paid_leave, unpaid_leave, sick_leave])
+        db.flush()
+
         allocations = [
-            LeaveAllocation(employee_id=alice.id, leave_type="paid",   allocated_days=20.0, used_days=0.0, year=CURRENT_YEAR),
-            LeaveAllocation(employee_id=alice.id, leave_type="unpaid", allocated_days=10.0, used_days=0.0, year=CURRENT_YEAR),
-            LeaveAllocation(employee_id=alice.id, leave_type="sick",   allocated_days=8.0,  used_days=0.0, year=CURRENT_YEAR),
-            LeaveAllocation(employee_id=bob.id,   leave_type="paid",   allocated_days=20.0, used_days=0.0, year=CURRENT_YEAR),
-            LeaveAllocation(employee_id=bob.id,   leave_type="unpaid", allocated_days=10.0, used_days=0.0, year=CURRENT_YEAR),
-            LeaveAllocation(employee_id=carol.id, leave_type="paid",   allocated_days=20.0, used_days=0.0, year=CURRENT_YEAR),
+            LeaveAllocation(employee_id=alice.id, type_id=paid_leave.id, allocated_days=20.0, used_days=0.0, year=CURRENT_YEAR),
+            LeaveAllocation(employee_id=alice.id, type_id=unpaid_leave.id, allocated_days=10.0, used_days=2.0, year=CURRENT_YEAR),
+            LeaveAllocation(employee_id=alice.id, type_id=sick_leave.id, allocated_days=8.0, used_days=0.0, year=CURRENT_YEAR),
+            LeaveAllocation(employee_id=bob.id, type_id=paid_leave.id, allocated_days=20.0, used_days=0.0, year=CURRENT_YEAR),
+            LeaveAllocation(employee_id=carol.id, type_id=paid_leave.id, allocated_days=20.0, used_days=0.0, year=CURRENT_YEAR),
         ]
         db.add_all(allocations)
         db.flush()
-        print(f"  ✔ Leave Allocations: {len(allocations)}")
 
-        # ------------------------------------------------------------------ #
-        # 4. ATTENDANCE RECORDS                                                #
-        # ------------------------------------------------------------------ #
+        # 7. ATTENDANCE (Including Manual Override record)
         attendances = [
             Attendance(
                 employee_id=alice.id,
                 check_in=datetime(2025, 7, 1, 9, 0, 0),
-                check_out=datetime(2025, 7, 1, 18, 0, 0),
+                check_out=datetime(2025, 7, 1, 17, 0, 0),
+                worked_hours=8.0,
+                status="PRESENT",
+                is_manual_override=False,
             ),
             Attendance(
                 employee_id=bob.id,
                 check_in=datetime(2025, 7, 1, 8, 45, 0),
-                check_out=datetime(2025, 7, 1, 17, 30, 0),
+                check_out=datetime(2025, 7, 1, 16, 45, 0),
+                worked_hours=8.0,
+                status="PRESENT",
+                is_manual_override=True,  # Manual correction by HR Manager
             ),
         ]
         db.add_all(attendances)
         db.flush()
-        print(f"  ✔ Attendance Records: {len(attendances)}")
 
-        # ------------------------------------------------------------------ #
-        # 5. LEAVE REQUESTS — 1 approved unpaid leave for Alice               #
-        #    This should trigger LOP deduction in the July 2025 payrun.       #
-        # ------------------------------------------------------------------ #
-        leaves = [
-            Leave(
+        # 8. LEAVE REQUESTS
+        leave_requests = [
+            LeaveRequest(
                 employee_id=alice.id,
-                leave_type="unpaid",
+                type_id=unpaid_leave.id,
                 date_from="2025-07-10",
                 date_to="2025-07-11",
-                days=2.0,
-                state="approved",
+                duration_days=2.0,
+                status=LeaveStatus.APPROVED,
+                is_unpaid=True,
             ),
-            Leave(
+            LeaveRequest(
                 employee_id=bob.id,
-                leave_type="paid",
+                type_id=paid_leave.id,
                 date_from="2025-07-14",
                 date_to="2025-07-14",
-                days=1.0,
-                state="draft",   # pending — should NOT affect payrun yet
+                duration_days=1.0,
+                status=LeaveStatus.PENDING,
+                is_unpaid=False,
             ),
         ]
-        db.add_all(leaves)
+        db.add_all(leave_requests)
         db.flush()
 
-        # Reflect Alice's approved unpaid leave in her allocation used_days
-        alice_unpaid_alloc = next(
-            a for a in allocations
-            if a.employee_id == alice.id and a.leave_type == "unpaid"
-        )
-        alice_unpaid_alloc.used_days += 2.0
-
-        print(f"  ✔ Leave Requests: {len(leaves)} (1 approved unpaid, 1 draft paid)")
-
-        # ------------------------------------------------------------------ #
-        # 6. SALARY STRUCTURE — stored as JSON on a demo Payrun for reference #
-        # ------------------------------------------------------------------ #
+        # 9. PAYRUN
         demo_payrun = Payrun(
+            name="July 2025 Payrun",
+            structure_id=sal_struct.id,
             period_start="2025-07-01",
             period_end="2025-07-31",
-            department=None,
-            state="draft",
+            status=PayrunStatus.DRAFT,
         )
         db.add(demo_payrun)
-        db.flush()
-        print(f"  ✔ Demo Payrun: #{demo_payrun.id} (July 2025, all departments, draft)")
-        print(f"  ✔ Salary Structure: '{SALARY_STRUCTURE['name']}' with {len(SALARY_STRUCTURE['rules'])} rules")
-        for rule in SALARY_STRUCTURE["rules"]:
-            print(f"       [{rule['sequence']}] {rule['code']:15s} — {rule['name']}")
-
         db.commit()
-        print("\n✅ Seed complete.")
-        print(f"   Employees        : {len(employees)}")
-        print(f"   Contracts        : {len(contracts)} (1 expired, 3 running)")
-        print(f"   Leave Allocations: {len(allocations)}")
-        print(f"   Attendance       : {len(attendances)}")
-        print(f"   Leave Requests   : {len(leaves)}")
-        print(f"   Payruns          : 1 (draft, July 2025)")
+
+        print("\n[OK] Seed complete successfully for Phase 1.")
 
     except Exception as exc:
         db.rollback()
-        print(f"\n❌ Seed failed: {exc}")
+        print(f"\n[ERROR] Seed failed: {exc}")
         raise
     finally:
         db.close()
 
 
 if __name__ == "__main__":
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     seed()

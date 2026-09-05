@@ -1,146 +1,228 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { Plus, Search } from 'lucide-react'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import client from '../api/client'
-
-const mockContracts = [
-  { id: 1, contract_ref: 'CNT-2023-001', employee: 'Aarav Sharma', department: 'Engineering', job_position: 'Tech Lead', start_date: '2023-01-12', end_date: 'Open-ended', wage: 175000, structure: 'Regular Tech Band 4', status: 'Active' },
-  { id: 2, contract_ref: 'CNT-2023-014', employee: 'Priya Patel', department: 'HR', job_position: 'HR Manager', start_date: '2023-04-01', end_date: 'Open-ended', wage: 125000, structure: 'Executive HR Band 3', status: 'Active' },
-  { id: 3, contract_ref: 'CNT-2024-008', employee: 'Rohan Verma', department: 'Sales', job_position: 'Account Executive', start_date: '2024-02-15', end_date: 'Open-ended', wage: 95000, structure: 'Sales Base + Incentive', status: 'Active' },
-  { id: 4, contract_ref: 'CNT-2024-022', employee: 'Ananya Iyer', department: 'Engineering', job_position: 'Frontend Engineer', start_date: '2024-06-01', end_date: 'Open-ended', wage: 110000, structure: 'Regular Tech Band 2', status: 'Active' },
-  { id: 5, contract_ref: 'CNT-2025-003', employee: 'Vikram Singh', department: 'Operations', job_position: 'Operations Specialist', start_date: '2025-01-10', end_date: '2026-12-31', wage: 85000, structure: 'Operations Band 2', status: 'Active' },
-  { id: 6, contract_ref: 'CNT-2025-019', employee: 'Sneha Reddy', department: 'Marketing', job_position: 'Growth Lead', start_date: '2025-03-01', end_date: 'Open-ended', wage: 120000, structure: 'Marketing Band 3', status: 'Active' },
-  { id: 7, contract_ref: 'CNT-2022-045', employee: 'Rajesh Kumar', department: 'Engineering', job_position: 'DevOps Architect', start_date: '2022-08-01', end_date: '2026-07-31', wage: 190000, structure: 'Regular Tech Band 5', status: 'Expired' },
-]
+import { getContracts, createContract } from '../api/contracts'
+import { getEmployees } from '../api/employees'
+import { getSalaryStructures } from '../api/salaryStructures'
+import { FileText, Plus, Filter, Check, X, Building, DollarSign } from 'lucide-react'
 
 export default function Contracts() {
   const [searchParams] = useSearchParams()
-  const employeeId = searchParams.get('employee')
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('All')
+  const employeeFilterId = searchParams.get('employee_id')
 
-  const { data: contractsData } = useQuery({
-    queryKey: ['contracts'],
-    queryFn: async () => {
-      try {
-        const res = await client.get('/api/v1/contracts')
-        return res?.data?.length ? res.data : mockContracts
-      } catch {
-        return mockContracts
-      }
-    },
-    initialData: mockContracts,
+  const [contracts, setContracts] = useState([])
+  const [employees, setEmployees] = useState([])
+  const [structures, setStructures] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const [formData, setFormData] = useState({
+    employee_id: employeeFilterId || 1,
+    wage: 8500.0,
+    date_start: '2025-01-01',
+    date_end: '',
+    department: 'Engineering',
+    job_position: 'Senior Software Engineer',
+    salary_structure_id: 1,
+    is_active: true,
   })
 
-  const records = contractsData || mockContracts
+  useEffect(() => {
+    loadData()
+  }, [employeeFilterId])
 
-  const filtered = records.filter((c) => {
-    const matchesSearch =
-      c.employee?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.contract_ref?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.department?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === 'All' || c.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+  const loadData = async () => {
+    setLoading(true)
+    try {
+      const [cData, eData, sData] = await Promise.all([
+        getContracts(employeeFilterId ? Number(employeeFilterId) : null),
+        getEmployees(),
+        getSalaryStructures(),
+      ])
+      setContracts(cData || [])
+      setEmployees(eData || [])
+      setStructures(sData || [])
+    } catch (err) {
+      console.error('Failed to load contracts data:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const formatCurrency = (amount) =>
-    new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount)
+  const handleCreate = async (e) => {
+    e.preventDefault()
+    try {
+      await createContract({
+        employee_id: Number(formData.employee_id),
+        wage: Number(formData.wage),
+        date_start: formData.date_start,
+        date_end: formData.date_end || null,
+        department: formData.department,
+        job_position: formData.job_position,
+        salary_structure_id: formData.salary_structure_id ? Number(formData.salary_structure_id) : null,
+        is_active: Boolean(formData.is_active),
+      })
+      setIsModalOpen(false)
+      loadData()
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to create contract.')
+    }
+  }
+
+  const getEmpName = (empId) => {
+    const emp = employees.find((e) => e.id === empId)
+    return emp ? emp.full_name || `${emp.first_name} ${emp.last_name}` : `Employee #${empId}`
+  }
 
   return (
-    <div className="space-y-4">
-      {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl glass-panel border border-slate-800">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">Contracts</h1>
-          <p className="text-xs text-slate-500">Employment terms, wage components, and validity periods.</p>
-          {employeeId && (
-            <p className="text-xs text-blue-600 font-medium mt-1">Filtering by Employee ID: #{employeeId}</p>
-          )}
-        </div>
-        <Button className="gap-1.5 font-medium shadow-xs">
-          <Plus className="h-3.5 w-3.5" /> New Contract
-        </Button>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by ref or employee..."
-            className="pl-8 h-8 text-xs bg-white shadow-xs"
-          />
+          <h2 className="text-2xl font-extrabold text-white flex items-center gap-2">
+            <FileText className="w-7 h-7 text-brand-400" />
+            <span>Contracts Management (Module A2)</span>
+          </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Manage period-aware employment contracts, base wages, and assigned salary structures
+          </p>
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
-          {['All', 'Active', 'Expired'].map((st) => (
-            <button
-              key={st}
-              onClick={() => setStatusFilter(st)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                statusFilter === st
-                  ? 'bg-[#714b67] text-white shadow-xs'
-                  : 'bg-white text-slate-600 hover:bg-slate-100 shadow-xs'
-              }`}
-            >
-              {st}
-            </button>
-          ))}
-        </div>
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold shadow-lg shadow-brand-500/20"
+        >
+          <Plus className="w-4 h-4" />
+          <span>New Contract</span>
+        </button>
       </div>
+
+      {/* Filter Banner */}
+      {employeeFilterId && (
+        <div className="p-3 rounded-xl bg-brand-500/10 border border-brand-500/30 text-xs text-brand-300 flex items-center justify-between">
+          <span>Filtering contracts for Employee #{employeeFilterId}: <strong>{getEmpName(Number(employeeFilterId))}</strong></span>
+          <a href="/contracts" className="underline font-bold text-white hover:text-brand-200">Clear Filter</a>
+        </div>
+      )}
 
       {/* Contracts Table */}
-      <Card className="p-0 overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Contract Ref</TableHead>
-              <TableHead>Employee</TableHead>
-              <TableHead>Salary Structure</TableHead>
-              <TableHead>Start Date</TableHead>
-              <TableHead>End Date</TableHead>
-              <TableHead className="text-right">Monthly Base Wage</TableHead>
-              <TableHead className="text-center">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((c) => (
-              <TableRow key={c.id}>
-                <TableCell className="font-mono text-xs text-[#714b67] font-semibold">
-                  {c.contract_ref}
-                </TableCell>
-                <TableCell className="font-semibold text-slate-900">
-                  <div>{c.employee}</div>
-                  <span className="text-[10px] text-slate-400 font-normal">{c.job_position} · {c.department}</span>
-                </TableCell>
-                <TableCell className="text-xs text-slate-600">{c.structure}</TableCell>
-                <TableCell className="text-xs font-mono text-slate-600">{c.start_date}</TableCell>
-                <TableCell className="text-xs font-mono text-slate-600">{c.end_date}</TableCell>
-                <TableCell className="text-right tabular-nums font-semibold text-slate-900">
-                  {formatCurrency(c.wage)}
-                </TableCell>
-                <TableCell className="text-center">
-                  <Badge variant={c.status === 'Active' ? 'success' : 'danger'}>
-                    {c.status}
-                  </Badge>
-                </TableCell>
-              </TableRow>
+      <div className="overflow-hidden rounded-2xl glass-panel border border-slate-800 shadow-xl">
+        <table className="w-full text-left text-xs">
+          <thead className="bg-slate-900 text-slate-400 uppercase font-semibold border-b border-slate-800">
+            <tr>
+              <th className="px-4 py-3">Employee</th>
+              <th className="px-4 py-3">Department / Position</th>
+              <th className="px-4 py-3">Base Wage</th>
+              <th className="px-4 py-3">Period (Start → End)</th>
+              <th className="px-4 py-3">Salary Structure</th>
+              <th className="px-4 py-3">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/80 text-slate-200">
+            {contracts.map((c) => (
+              <tr key={c.id} className="hover:bg-slate-900/40 transition-colors">
+                <td className="px-4 py-3 font-bold text-white">{getEmpName(c.employee_id)}</td>
+                <td className="px-4 py-3">
+                  <div>{c.department || 'Engineering'}</div>
+                  <div className="text-[10px] text-slate-400">{c.job_position || 'Staff'}</div>
+                </td>
+                <td className="px-4 py-3 font-extrabold text-emerald-400 text-sm">
+                  ${c.wage?.toFixed(2)} / mo
+                </td>
+                <td className="px-4 py-3 font-mono">
+                  {c.date_start} → {c.date_end || 'Ongoing'}
+                </td>
+                <td className="px-4 py-3 text-brand-300 font-semibold">
+                  Regular Monthly Structure
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                    c.is_active
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                      : 'bg-red-500/20 text-red-300 border-red-500/30'
+                  }`}>
+                    {c.is_active ? 'ACTIVE' : 'EXPIRED'}
+                  </span>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
-      </Card>
+          </tbody>
+        </table>
+      </div>
+
+      {/* New Contract Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+          <div className="w-full max-w-md glass-panel border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/60">
+              <h3 className="text-base font-bold text-white">Create Employment Contract</h3>
+              <button onClick={() => setIsModalOpen(false)} className="p-1 text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreate} className="p-6 space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Employee</label>
+                <select
+                  value={formData.employee_id}
+                  onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:border-brand-500 focus:outline-none"
+                >
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.full_name || emp.name || `Employee #${emp.id}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Base Wage ($ / Month)</label>
+                <input
+                  type="number"
+                  step="100"
+                  required
+                  value={formData.wage}
+                  onChange={(e) => setFormData({ ...formData, wage: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm font-bold text-emerald-400 focus:border-brand-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Date Start</label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.date_start}
+                    onChange={(e) => setFormData({ ...formData, date_start: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:border-brand-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Date End (Optional)</label>
+                  <input
+                    type="date"
+                    value={formData.date_end}
+                    onChange={(e) => setFormData({ ...formData, date_end: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:border-brand-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800">
+                  Cancel
+                </button>
+                <button type="submit" className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold">
+                  <Check className="w-4 h-4" />
+                  <span>Create Contract</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

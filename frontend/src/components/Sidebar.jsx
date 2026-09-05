@@ -3,8 +3,7 @@ import {
   LayoutDashboard, Users, FileText, Clock, Umbrella,
   DollarSign, ChevronRight, Layers, Sliders, CalendarCheck
 } from 'lucide-react'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
+
 
 const navGroups = [
   {
@@ -93,11 +92,9 @@ export default function Sidebar() {
       <div className="p-3 bg-slate-50/60">
         <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-100/80 transition-colors cursor-pointer">
           <div className="flex items-center gap-2.5 min-w-0">
-            <Avatar className="h-7 w-7 border-0 shadow-xs">
-              <AvatarFallback className="bg-[#714b67]/15 text-[#714b67] text-xs font-semibold">
-                LM
-              </AvatarFallback>
-            </Avatar>
+            <div className="h-7 w-7 rounded-full bg-[#714b67]/15 text-[#714b67] text-xs font-semibold flex items-center justify-center">
+              LM
+            </div>
             <div className="flex flex-col min-w-0">
               <span className="text-xs font-medium text-slate-800 truncate">Lucky Mohanty</span>
               <span className="text-[10px] text-slate-400 truncate">Payroll Officer</span>
