@@ -59,17 +59,19 @@ app.include_router(dashboard.router, prefix="/api/v1/reports", tags=["Dashboard"
 
 @app.get("/health", tags=["Health"])
 @app.get("/api/health", tags=["Health"])
-def health_check(db: Session = Depends(get_db)):
-    db_status = "healthy"
+def health_check():
     try:
-        db.execute(text("SELECT 1"))
-    except Exception:
-        db_status = "unhealthy"
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
 
-    return {
-        "status": "healthy" if db_status == "healthy" else "degraded",
-        "service": "PeoplePay360 HR & Payroll Engine",
-        "version": "2.0.0",
-        "environment": settings.environment,
-        "database": db_status,
-    }
+        return {
+            "status": "ok",
+            "service": "PeoplePay360 RBAC API",
+            "database": "connected",
+        }
+    except Exception:
+        return {
+            "status": "error",
+            "service": "PeoplePay360 RBAC API",
+            "database": "disconnected",
+        }

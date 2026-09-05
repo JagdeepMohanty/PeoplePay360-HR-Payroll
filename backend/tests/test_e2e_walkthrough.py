@@ -65,6 +65,10 @@ class TestE2EWalkthroughAndQARoles(unittest.TestCase):
         self.assertEqual(emp_res.status_code, 201)
         emp_id = emp_res.json()["id"]
 
+        # Fetch dynamic structure ID from seeded data
+        structs = self.client.get("/api/v1/salary-structures", headers=self.auth_header("HR_PAYROLL_MANAGER")).json()
+        struct_id = structs[0]["id"] if structs else 1
+
         # Step 2: Active Contract (as HR Manager)
         contract_res = self.client.post(
             "/api/v1/contracts",
@@ -75,7 +79,7 @@ class TestE2EWalkthroughAndQARoles(unittest.TestCase):
                 "date_end": "2025-12-31",
                 "department": "Engineering",
                 "job_position": "Staff Security Engineer",
-                "salary_structure_id": 1,
+                "salary_structure_id": struct_id,
                 "is_active": True,
             },
             headers=self.auth_header("HR_MANAGER"),
@@ -97,12 +101,16 @@ class TestE2EWalkthroughAndQARoles(unittest.TestCase):
         )
         self.assertEqual(att_res.status_code, 201)
 
+        # Fetch dynamic leave type ID from seeded data
+        leave_types = self.client.get("/api/v1/leaves/types", headers=self.auth_header("HR_MANAGER")).json()
+        type_id = leave_types[0]["id"] if leave_types else 1
+
         # Step 4: Create Leave Allocation & Submit Unpaid Leave Request
         alloc_res = self.client.post(
             "/api/v1/leaves/allocation",
             json={
                 "employee_id": emp_id,
-                "type_id": 2,
+                "type_id": type_id,
                 "allocated_days": 15.0,
                 "used_days": 0.0,
                 "year": 2025,
@@ -115,7 +123,7 @@ class TestE2EWalkthroughAndQARoles(unittest.TestCase):
             "/api/v1/leaves/request",
             json={
                 "employee_id": emp_id,
-                "type_id": 2,  # Unpaid Leave
+                "type_id": type_id,  # Leave Type
                 "date_from": "2025-07-14",
                 "date_to": "2025-07-15",
                 "duration_days": 2.0,

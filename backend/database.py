@@ -7,10 +7,12 @@ except ImportError:
     from .config import settings
 
 
-# Normalize postgres:// to postgresql:// for SQLAlchemy compatibility (Render/Supabase/Heroku)
+# Normalize PostgreSQL connection schemes for psycopg3 (Render/Supabase/Heroku)
 db_url = settings.database_url
 if db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
+    db_url = db_url.replace("postgres://", "postgresql+psycopg://", 1)
+elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+"):
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
 
 if db_url.startswith("sqlite"):
     engine = create_engine(
