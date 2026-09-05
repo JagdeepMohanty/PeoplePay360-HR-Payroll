@@ -29,7 +29,7 @@ import {
 export default function PayrunProcessing() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { activeRole } = useAuth()
+  const { activeRole, hasPermission } = useAuth()
 
   const [payrun, setPayrun] = useState(null)
   const [payslips, setPayslips] = useState([])
@@ -41,7 +41,10 @@ export default function PayrunProcessing() {
   const [selectedPayslip, setSelectedPayslip] = useState(null)
   const [notification, setNotification] = useState('')
 
-  const isPayrollAuthorized = ['ADMIN', 'HR_PAYROLL_USER', 'HR_PAYROLL_MANAGER'].includes(activeRole)
+  const isPayrollAuthorized =
+    ['ADMIN', 'HR_PAYROLL_USER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL'].includes((activeRole || '').toUpperCase()) ||
+    hasPermission('payroll:manage') ||
+    hasPermission('payroll:view:all')
 
   useEffect(() => {
     if (isPayrollAuthorized) {

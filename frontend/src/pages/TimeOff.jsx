@@ -15,7 +15,9 @@ import { Calendar, Plus, CheckCircle2, XCircle, Clock, AlertCircle, PieChart } f
 export default function TimeOff() {
   const [searchParams] = useSearchParams()
   const employeeFilterId = searchParams.get('employee_id')
-  const { activeRole } = useAuth()
+  const { activeRole, hasPermission } = useAuth()
+
+  const canManage = ['ADMIN', 'HR_MANAGER', 'HR_PAYROLL_USER', 'HR_PAYROLL_MANAGER', 'HR', 'HR_PAYROLL'].includes((activeRole || '').toUpperCase()) || hasPermission('employee:view:all')
 
   const [types, setTypes] = useState([])
   const [allocations, setAllocations] = useState([])
@@ -81,7 +83,6 @@ export default function TimeOff() {
     return t ? t.name : `Type #${typeId}`
   }
 
-  const canManage = ['ADMIN', 'HR_MANAGER', 'HR_PAYROLL_USER', 'HR_PAYROLL_MANAGER'].includes(activeRole)
 
   return (
     <div className="space-y-6">

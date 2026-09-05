@@ -6,13 +6,16 @@ import PayrunWizardModal from '../components/PayrunWizardModal'
 import { DollarSign, Plus, ChevronRight, Layers, Calendar, CheckCircle2, ShieldAlert } from 'lucide-react'
 
 export default function Payruns() {
-  const { activeRole } = useAuth()
+  const { activeRole, hasPermission } = useAuth()
   const [payruns, setPayruns] = useState([])
   const [loading, setLoading] = useState(true)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const navigate = useNavigate()
 
-  const isPayrollAuthorized = ['ADMIN', 'HR_PAYROLL_USER', 'HR_PAYROLL_MANAGER'].includes(activeRole)
+  const isPayrollAuthorized =
+    ['ADMIN', 'HR_PAYROLL_USER', 'HR_PAYROLL_MANAGER', 'HR_PAYROLL'].includes((activeRole || '').toUpperCase()) ||
+    hasPermission('payroll:manage') ||
+    hasPermission('payroll:view:all')
 
   useEffect(() => {
     if (isPayrollAuthorized) {

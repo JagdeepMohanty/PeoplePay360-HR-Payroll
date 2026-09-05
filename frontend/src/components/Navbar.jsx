@@ -12,35 +12,56 @@ import {
   Shield,
   ChevronDown,
   UserCheck,
+  LogOut,
+  User,
+  LayoutDashboard,
 } from 'lucide-react'
 
 export default function Navbar() {
-  const { activeRole, switchRole, user } = useAuth()
+  const { activeRole, employeeId, switchRole, changeEmployee, hasPermission, setShowAccessModal } = useAuth()
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
-  const navItems = [
-    { to: '/employees', label: 'Employees', icon: Users },
-    { to: '/contracts', label: 'Contracts', icon: FileText },
-    { to: '/attendance', label: 'Attendance', icon: Clock },
-    { to: '/time-off', label: 'Time Off', icon: Calendar },
-    { to: '/payruns', label: 'Payroll', icon: DollarSign },
-    { to: '/reports', label: 'Reports', icon: BarChart3 },
+  // Map permissions to nav items
+  const allNavItems = [
+    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: null },
+    {
+      to: '/employees',
+      label: hasPermission('employee:view:all') ? 'Employees' : 'My Details',
+      icon: Users,
+      permission: 'employee:view:own',
+    },
+    { to: '/contracts', label: 'Contracts', icon: FileText, permission: 'employee:view:all' },
+    { to: '/attendance', label: 'Attendance', icon: Clock, permission: 'employee:view:own' },
+    { to: '/time-off', label: 'Time Off', icon: Calendar, permission: 'employee:view:own' },
+    {
+      to: '/payruns',
+      label: hasPermission('payroll:manage') || hasPermission('payroll:view:all') ? 'Payroll' : 'My Payroll',
+      icon: DollarSign,
+      permission: 'payroll:view:own',
+    },
+    { to: '/reports', label: 'Reports', icon: BarChart3, permission: 'employee:view:all' },
   ]
 
+  // Filter allowed items based on active permissions
+  const permittedNavItems = allNavItems.filter((item) => {
+    if (!item.permission) return true
+    return hasPermission(item.permission)
+  })
+
   const getRoleBadgeColor = (role) => {
-    switch (role) {
-      case 'ADMIN':
-        return 'bg-purple-500/20 text-purple-300 border-purple-500/30'
-      case 'HR_MANAGER':
-        return 'bg-blue-500/20 text-blue-300 border-blue-500/30'
-      case 'HR_PAYROLL_USER':
-        return 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
-      case 'HR_PAYROLL_MANAGER':
+    const r = (role || '').toLowerCase()
+    switch (r) {
+      case 'hr_payroll':
+      case 'hr_payroll_manager':
+      case 'admin':
         return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-      case 'EMPLOYEE':
+      case 'hr':
+      case 'hr_manager':
+        return 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+      case 'employee':
         return 'bg-amber-500/20 text-amber-300 border-amber-500/30'
       default:
-        return 'bg-slate-700 text-slate-300 border-slate-600'
+        return 'bg-brand-500/20 text-brand-300 border-brand-500/30'
     }
   }
 
@@ -60,9 +81,9 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Primary Navigation Items */}
+        {/* Primary Dynamic Nav Items */}
         <nav className="flex items-center space-x-1 sm:space-x-2 overflow-x-auto w-full md:w-auto py-1">
-          {navItems.map((item) => {
+          {permittedNavItems.map((item) => {
             const Icon = item.icon
             return (
               <NavLink
@@ -83,49 +104,84 @@ export default function Navbar() {
           })}
         </nav>
 
-        {/* Role Switcher & Active User Info */}
-        <div className="relative">
+        {/* Employee ID & Role Info & Quick Switcher */}
+        <div className="flex items-center space-x-2.5">
+          {/* Change Employee / Exit Button */}
           <button
-            onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center space-x-2.5 px-3 py-1.5 rounded-xl glass-card border border-slate-700/60 text-slate-200 hover:border-slate-500 transition-all text-xs font-semibold"
+            type="button"
+            onClick={changeEmployee}
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700/80 text-xs font-semibold text-slate-300 hover:text-white hover:border-slate-500 transition-all"
+            title="Change Employee ID or Switch Role"
           >
-            <UserCheck className="w-4 h-4 text-brand-400" />
-            <div className="text-left">
-              <div className="text-[10px] text-slate-400 leading-none">Switch Active Role</div>
-              <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-bold border mt-0.5 ${getRoleBadgeColor(activeRole)}`}>
-                {activeRole}
-              </span>
-            </div>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <LogOut className="w-3.5 h-3.5 text-rose-400" />
+            <span className="hidden sm:inline">Change Employee</span>
           </button>
 
-          {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-56 rounded-xl glass-panel border border-slate-700 shadow-2xl z-50 p-2 space-y-1">
-              <div className="px-2 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                Select Persona & Role
-              </div>
-              {ROLE_ACCOUNTS.map((acc) => (
-                <button
-                  key={acc.role}
-                  onClick={() => {
-                    switchRole(acc.role)
-                    setDropdownOpen(false)
-                  }}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex flex-col transition-colors ${
-                    activeRole === acc.role
-                      ? 'bg-brand-600/30 text-white font-bold border border-brand-500/30'
-                      : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-                  }`}
+          {/* User Persona Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className="flex items-center space-x-2.5 px-3 py-1.5 rounded-xl glass-card border border-slate-700/60 text-slate-200 hover:border-slate-500 transition-all text-xs font-semibold"
+            >
+              <User className="w-4 h-4 text-brand-400" />
+              <div className="text-left">
+                <div className="text-[10px] text-slate-400 leading-none">
+                  {employeeId ? `ID: ${employeeId}` : 'Active Role'}
+                </div>
+                <span
+                  className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-bold border mt-0.5 uppercase ${getRoleBadgeColor(
+                    activeRole
+                  )}`}
                 >
-                  <span className="flex items-center justify-between">
-                    <span>{acc.label}</span>
-                    <span className="text-[10px] opacity-75">{acc.role}</span>
-                  </span>
-                  <span className="text-[10px] text-slate-400">{acc.email}</span>
+                  {activeRole || 'guest'}
+                </span>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-2 w-60 rounded-xl glass-panel border border-slate-700 shadow-2xl z-50 p-2 space-y-1">
+                <div className="px-2 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>RBAC Persona Switcher</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDropdownOpen(false)
+                    setShowAccessModal(true)
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-lg text-xs font-bold bg-brand-600/20 text-brand-300 hover:bg-brand-600/40 flex items-center justify-between border border-brand-500/30 transition-all"
+                >
+                  <span>Enter Employee ID</span>
+                  <UserCheck className="w-4 h-4" />
                 </button>
-              ))}
-            </div>
-          )}
+                <div className="pt-1 border-t border-slate-800/80">
+                  <div className="px-2 py-1 text-[10px] font-semibold text-slate-400 uppercase">
+                    Legacy Persona Presets
+                  </div>
+                  {ROLE_ACCOUNTS.map((acc) => (
+                    <button
+                      key={acc.role}
+                      onClick={() => {
+                        switchRole(acc.role)
+                        setDropdownOpen(false)
+                      }}
+                      className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium flex flex-col transition-colors ${
+                        activeRole === acc.role
+                          ? 'bg-brand-600/30 text-white font-bold border border-brand-500/30'
+                          : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                      }`}
+                    >
+                      <span className="flex items-center justify-between">
+                        <span>{acc.label}</span>
+                        <span className="text-[10px] opacity-75">{acc.role}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>
