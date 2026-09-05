@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   Umbrella, Plus, CheckCircle2, XCircle, Clock, Calendar,
@@ -28,6 +29,8 @@ const mockBalances = [
 ]
 
 export default function TimeOff() {
+  const [searchParams] = useSearchParams()
+  const employeeId = searchParams.get('employee')
   const [requests, setRequests] = useState(mockRequests)
   const [searchTerm, setSearchTerm] = useState('')
 
@@ -51,6 +54,9 @@ export default function TimeOff() {
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900">Time Off Management</h1>
           <p className="text-xs text-slate-500">Employee leave requests, approvals, and allocation balances.</p>
+          {employeeId && (
+            <p className="text-xs text-blue-600 font-medium mt-1">Filtering by Employee ID: #{employeeId}</p>
+          )}
         </div>
         <Button className="gap-1.5 font-medium shadow-xs">
           <Plus className="h-3.5 w-3.5" /> New Leave Request

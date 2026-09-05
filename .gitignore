@@ -1,6 +1,8 @@
 # Node / Frontend
 node_modules/
+**/node_modules/
 dist/
+**/dist/
 dist-ssr/
 *.local
 .npm
@@ -8,6 +10,7 @@ dist-ssr/
 
 # Python / Backend
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 *.so

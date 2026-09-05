@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Plus, Search, FileText } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,6 +20,8 @@ const mockContracts = [
 ]
 
 export default function Contracts() {
+  const [searchParams] = useSearchParams()
+  const employeeId = searchParams.get('employee')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
 
@@ -60,6 +63,9 @@ export default function Contracts() {
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900">Contracts</h1>
           <p className="text-xs text-slate-500">Employment terms, wage components, and validity periods.</p>
+          {employeeId && (
+            <p className="text-xs text-blue-600 font-medium mt-1">Filtering by Employee ID: #{employeeId}</p>
+          )}
         </div>
         <Button className="gap-1.5 font-medium shadow-xs">
           <Plus className="h-3.5 w-3.5" /> New Contract

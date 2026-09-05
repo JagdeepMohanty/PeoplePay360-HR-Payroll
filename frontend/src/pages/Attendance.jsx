@@ -1,8 +1,8 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Search, Clock, CheckCircle2, AlertCircle, XCircle,
-  Calendar, Download, UserCheck
+  Search, Download, UserCheck
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,8 @@ const mockAttendance = [
 ]
 
 export default function Attendance() {
+  const [searchParams] = useSearchParams()
+  const employeeId = searchParams.get('employee')
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
 
@@ -72,11 +74,14 @@ export default function Attendance() {
 
   return (
     <div className="space-y-4">
-      {/* Top Action Bar (0 Outlines) */}
+      {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900">Attendance & Shifts</h1>
           <p className="text-xs text-slate-500">Live biometric punch-in logs and overtime tracking.</p>
+          {employeeId && (
+            <p className="text-xs text-blue-600 font-medium mt-1">Filtering by Employee ID: #{employeeId}</p>
+          )}
         </div>
         <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 shadow-xs">
           <Download className="h-3.5 w-3.5" /> Export Attendance

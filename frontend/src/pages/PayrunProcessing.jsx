@@ -1,240 +1,260 @@
-import { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
-import {
-  Sparkles, CheckCircle2, AlertTriangle, ArrowRight, ArrowLeft,
-  FileText, ShieldCheck, Download, RefreshCw, Check
-} from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import client from '../api/client'
-
-const mockExceptions = [
-  { id: 'EX-1', employee: 'Vikram Singh', type: 'Unapproved Leave Deduction', impact: '₹2,857', severity: 'Critical', description: '4 days unapproved PTO pending manager signoff' },
-  { id: 'EX-2', employee: 'Sneha Reddy', type: 'Late Check-in LOP', impact: '₹1,200', severity: 'Warning', description: '3 consecutive late check-ins exceeding grace period' },
-  { id: 'EX-3', employee: 'Aarav Sharma', type: 'PF Ceiling Validation', impact: '₹0', severity: 'Info', description: 'Voluntary PF contribution opt-in confirmed' },
-]
-
-const mockComputedPayslips = [
-  { id: 101, employee: 'Aarav Sharma', role: 'Tech Lead', gross: 175000, deductions: 24800, net: 150200, status: 'Computed' },
-  { id: 102, employee: 'Priya Patel', role: 'HR Manager', gross: 125000, deductions: 18200, net: 106800, status: 'Computed' },
-  { id: 103, employee: 'Rohan Verma', role: 'Sales Executive', gross: 95000, deductions: 14100, net: 80900, status: 'Computed' },
-  { id: 104, employee: 'Ananya Iyer', role: 'Frontend Engineer', gross: 110000, deductions: 16500, net: 93500, status: 'Computed' },
-  { id: 105, employee: 'Vikram Singh', role: 'Operations Specialist', gross: 85000, deductions: 15657, net: 69343, status: 'Warning' },
-]
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Calculator, ShieldCheck, CheckCircle2, Send, Eye, FileText, ArrowLeft, AlertCircle, Sparkles } from 'lucide-react'
+import { fetchPayrunDetail, fetchPayrollWarnings, dispatchPayslipEmail, generatePayslipPdf } from '../api/payrollAdapter'
+import PayrollStatusBadge from '../components/payroll/common/PayrollStatusBadge'
+import PayrollWarningBanner from '../components/payroll/warnings/PayrollWarningBanner'
+import PayslipDrawerModal from '../components/payroll/payslip/PayslipDrawerModal'
+import LoadingState from '../components/payroll/common/LoadingState'
 
 export default function PayrunProcessing() {
   const { id } = useParams()
-  const [stage, setStage] = useState('Computed') // Draft, Computed, Validated, Paid
-  const [exceptions, setExceptions] = useState(mockExceptions)
-  const [isScanning, setIsScanning] = useState(false)
-  const [scanStep, setScanStep] = useState(0)
+  const qc = useQueryClient()
 
-  const formatCurrency = (amount) =>
-    new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount)
+  const [currentStatus, setCurrentStatus] = useState('draft')
+  const [warnings, setWarnings] = useState([])
+  const [activePayslip, setActivePayslip] = useState(null)
+  const [toastMessage, setToastMessage] = useState(null)
+  const [dispatchingAll, setDispatchingAll] = useState(false)
 
-  const handleFixNow = (exceptionId) => {
-    setExceptions((prev) => prev.filter((e) => e.id !== exceptionId))
+  // Fetch payrun details
+  const { data: payrun, isLoading } = useQuery({
+    queryKey: ['payrun', id],
+    queryFn: () => fetchPayrunDetail(id),
+  })
+
+  // Sync status state when payrun data loads
+  useEffect(() => {
+    if (payrun?.state) {
+      setCurrentStatus(payrun.state)
+    }
+  }, [payrun])
+
+  const showToast = (text, type = 'success') => {
+    setToastMessage({ text, type })
+    setTimeout(() => setToastMessage(null), 4000)
   }
 
-  const handleRunGuardian = () => {
-    setIsScanning(true)
-    setScanStep(1)
-    setTimeout(() => setScanStep(2), 500)
-    setTimeout(() => setScanStep(3), 1000)
+  // Action Mutations
+  const [isComputing, setIsComputing] = useState(false)
+  const handleCompute = async () => {
+    setIsComputing(true)
     setTimeout(() => {
-      setIsScanning(false)
-      setScanStep(0)
-      setStage('Validated')
-    }, 1500)
+      setCurrentStatus('computed')
+      setIsComputing(false)
+      showToast(`Payrun #${id} computed successfully based on active running contracts.`)
+    }, 800)
   }
+
+  const [isValidating, setIsValidating] = useState(false)
+  const handleValidate = async () => {
+    setIsValidating(true)
+    const warningList = await fetchPayrollWarnings(id)
+    setWarnings(warningList)
+    setCurrentStatus('validated')
+    setIsValidating(false)
+    showToast(`Guardian checks complete. ${warningList.length} warning(s) detected.`, warningList.length > 0 ? 'warning' : 'success')
+  }
+
+  const [isConfirming, setIsConfirming] = useState(false)
+  const handleMarkPaid = async () => {
+    setIsConfirming(true)
+    setTimeout(() => {
+      setCurrentStatus('confirmed')
+      setIsConfirming(false)
+      showToast(`Payrun #${id} marked as Paid & Confirmed.`)
+    }, 800)
+  }
+
+  const handleSendAllPayslips = async () => {
+    setDispatchingAll(true)
+    setTimeout(() => {
+      setDispatchingAll(false)
+      showToast(`All employee payslips for Payrun #${id} queued for email delivery.`)
+    }, 1000)
+  }
+
+  if (isLoading) {
+    return <LoadingState rows={5} message="Loading payrun execution & payslip details…" />
+  }
+
+  const payslips = payrun?.payslips || []
+
+  // Status progression rules for button states
+  const canCompute = currentStatus === 'draft' || currentStatus === 'computed'
+  const canValidate = currentStatus === 'computed' || currentStatus === 'validated'
+  const canMarkPaid = currentStatus === 'validated'
+  const canSendPayslips = currentStatus === 'confirmed'
 
   return (
-    <div className="space-y-5">
-      {/* Header & Odoo Status Stage Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
-        <div className="flex items-center gap-3">
-          <Link to="/payruns">
-            <Button variant="outline" size="sm" className="h-7 px-2 text-xs">
-              <ArrowLeft className="h-3.5 w-3.5" /> Back
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              Payrun Batch #{id || '04'} — September 2026
-            </h1>
-            <p className="text-xs text-slate-500">Regular payroll calculation cycle for 92 employees.</p>
-          </div>
-        </div>
-
-        {/* Odoo Status Chevron Pipeline */}
-        <div className="flex items-center bg-slate-100/80 p-1 rounded-full text-xs font-medium">
-          {['Draft', 'Computed', 'Validated', 'Paid'].map((st, idx) => (
-            <span
-              key={st}
-              className={`px-3 py-1 rounded-full transition-all ${
-                stage === st
-                  ? 'bg-[#714b67] text-white shadow-xs font-semibold'
-                  : 'text-slate-500'
-              }`}
-            >
-              {st}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Guardian Scanner Card */}
-      <Card className="p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-[#714b67]/10 text-[#714b67]">
-              <ShieldCheck className="h-6 w-6" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">Payroll Guardian Compliance Scan</h2>
-              <p className="text-xs text-slate-500">
-                Automated validation of biometric logs, unapproved leaves, and statutory PF/ESI ceilings.
-              </p>
-            </div>
-          </div>
-
-          <Button
-            onClick={handleRunGuardian}
-            disabled={isScanning}
-            className="gap-2 font-medium"
-          >
-            <Sparkles className={`h-3.5 w-3.5 ${isScanning ? 'animate-spin' : ''}`} />
-            {isScanning ? 'Scanning Rules...' : 'Run Payroll Guardian'}
-          </Button>
-        </div>
-
-        {isScanning && (
-          <div className="p-3 rounded-xl bg-slate-50 space-y-2 text-xs text-slate-600">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              <span>Verifying biometric punch clocks across Bangalore HQ...</span>
-            </div>
-            {scanStep >= 2 && (
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span>Checking approved PTO vs loss-of-pay deductions...</span>
-              </div>
-            )}
-            {scanStep >= 3 && (
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span>Calculating statutory PF (12%) & Professional Tax ceilings...</span>
-              </div>
-            )}
-          </div>
-        )}
-      </Card>
-
-      {/* Exceptions Section */}
-      {exceptions.length > 0 && (
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-              Requires Attention ({exceptions.length} Items)
-            </h3>
-            <span className="text-[11px] text-slate-400">Resolve items to reach 100% compliance</span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {exceptions.map((ex) => (
-              <Card key={ex.id} className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <Badge
-                    variant={ex.severity === 'Critical' ? 'danger' : 'warning'}
-                    className="text-[10px]"
-                  >
-                    {ex.severity}
-                  </Badge>
-                  <span className="font-semibold text-xs text-slate-900 tabular-nums">
-                    Impact: {ex.impact}
-                  </span>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-xs text-slate-900">{ex.employee}</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{ex.description}</p>
-                </div>
-                <div className="flex items-center gap-2 pt-1">
-                  <Button
-                    size="sm"
-                    variant="teal"
-                    onClick={() => handleFixNow(ex.id)}
-                    className="h-6 px-2.5 text-[11px] flex-1"
-                  >
-                    Fix Now
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleFixNow(ex.id)}
-                    className="h-6 px-2 text-[11px] text-slate-400 hover:text-slate-600"
-                  >
-                    Ignore
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
+    <div className="max-w-5xl space-y-6">
+      {/* Toast Notification Banner */}
+      {toastMessage && (
+        <div className={`p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between shadow-md transition-all ${
+          toastMessage.type === 'warning' ? 'bg-amber-500 text-white' :
+          toastMessage.type === 'error' ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'
+        }`}>
+          <span className="flex items-center gap-2">
+            <CheckCircle2 size={16} />
+            {toastMessage.text}
+          </span>
+          <button onClick={() => setToastMessage(null)} className="hover:opacity-80">✕</button>
         </div>
       )}
 
-      {/* Computed Payslips Table */}
-      <Card className="p-0 overflow-hidden">
-        <div className="p-4 flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900">Generated Payslips Summary</h3>
-            <p className="text-xs text-slate-500">Gross earnings, statutory deductions, and payable net salary</p>
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Link to="/payruns" className="text-xs text-blue-600 font-semibold hover:underline flex items-center gap-1">
+              <ArrowLeft size={12} /> Payruns
+            </Link>
+            <span className="text-gray-300">/</span>
+            <span className="text-xs font-bold text-gray-500">Processing</span>
           </div>
-          <Badge variant="success">92 Payslips Ready</Badge>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold text-gray-900">{payrun?.name || `Payrun #${id}`}</h1>
+            <PayrollStatusBadge status={currentStatus} />
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            Period: <span className="font-semibold text-gray-700">{payrun?.period_start} → {payrun?.period_end}</span> · {payrun?.structure_name}
+          </p>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Employee</TableHead>
-              <TableHead>Designation</TableHead>
-              <TableHead className="text-right">Gross Salary</TableHead>
-              <TableHead className="text-right">Deductions</TableHead>
-              <TableHead className="text-right">Net Payable</TableHead>
-              <TableHead className="text-right">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mockComputedPayslips.map((ps) => (
-              <TableRow key={ps.id}>
-                <TableCell className="font-semibold text-slate-900">{ps.employee}</TableCell>
-                <TableCell className="text-xs text-slate-500">{ps.role}</TableCell>
-                <TableCell className="text-right font-medium tabular-nums text-slate-700">
-                  {formatCurrency(ps.gross)}
-                </TableCell>
-                <TableCell className="text-right font-medium tabular-nums text-rose-600">
-                  −{formatCurrency(ps.deductions)}
-                </TableCell>
-                <TableCell className="text-right font-bold tabular-nums text-slate-900">
-                  {formatCurrency(ps.net)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Link to={`/payruns/${id || 4}/report`}>
-                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1 text-[#714b67] hover:text-[#5f3e56]">
-                      <FileText className="h-3 w-3" /> View Payslip
-                    </Button>
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+
+        {/* Action Buttons Toolbar with Status Progression Enforcement */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Step 1: Compute */}
+          <button
+            onClick={handleCompute}
+            disabled={!canCompute || isComputing}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+              currentStatus === 'draft'
+                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            } disabled:opacity-50`}
+          >
+            <Calculator size={14} /> {isComputing ? 'Computing…' : '1. Compute'}
+          </button>
+
+          {/* Step 2: Validate */}
+          <button
+            onClick={handleValidate}
+            disabled={!canValidate || isValidating}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+              currentStatus === 'computed'
+                ? 'bg-amber-500 text-white hover:bg-amber-600 shadow-sm'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            } disabled:opacity-50`}
+          >
+            <ShieldCheck size={14} /> {isValidating ? 'Running Checks…' : '2. Validate'}
+          </button>
+
+          {/* Step 3: Mark Paid */}
+          <button
+            onClick={handleMarkPaid}
+            disabled={!canMarkPaid || isConfirming}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+              currentStatus === 'validated'
+                ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            } disabled:opacity-50`}
+          >
+            <CheckCircle2 size={14} /> {isConfirming ? 'Processing…' : '3. Mark Paid'}
+          </button>
+
+          {/* Step 4: Send Payslips */}
+          <button
+            onClick={handleSendAllPayslips}
+            disabled={!canSendPayslips || dispatchingAll}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+              currentStatus === 'confirmed'
+                ? 'bg-purple-600 text-white hover:bg-purple-700 shadow-sm'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            } disabled:opacity-50`}
+          >
+            <Send size={14} /> {dispatchingAll ? 'Dispatching…' : 'Send All Payslips'}
+          </button>
+        </div>
+      </div>
+
+      {/* Warnings Component (PART C) */}
+      <PayrollWarningBanner warnings={warnings} />
+
+      {/* Summary KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
+          <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Total Employees</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{payrun?.employee_count || payslips.length}</p>
+        </div>
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
+          <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Gross Pay Sum</p>
+          <p className="text-2xl font-bold text-blue-700 mt-1">${payrun?.total_gross?.toLocaleString() || 0}</p>
+        </div>
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
+          <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Net Payable Sum</p>
+          <p className="text-2xl font-bold text-emerald-700 mt-1">${payrun?.total_net?.toLocaleString() || 0}</p>
+        </div>
+      </div>
+
+      {/* Payslips Table */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
+          <h2 className="text-sm font-bold text-gray-900">Calculated Employee Payslips ({payslips.length})</h2>
+          <span className="text-xs text-gray-400">Click any row to open itemized breakdown</span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="bg-gray-50 text-gray-500 uppercase font-semibold border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-3 text-left">Employee</th>
+                <th className="px-4 py-3 text-left">Department</th>
+                <th className="px-4 py-3 text-right">Basic</th>
+                <th className="px-4 py-3 text-right">Gross</th>
+                <th className="px-4 py-3 text-right">Deductions</th>
+                <th className="px-4 py-3 text-right">Net Pay</th>
+                <th className="px-4 py-3 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {payslips.map((ps) => (
+                <tr
+                  key={ps.id}
+                  onClick={() => setActivePayslip(ps)}
+                  className="hover:bg-blue-50/50 cursor-pointer transition-colors"
+                >
+                  <td className="px-4 py-3">
+                    <p className="font-bold text-gray-900">{ps.employee_name}</p>
+                    <p className="text-[11px] text-gray-400">{ps.job_title}</p>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 font-medium">{ps.department}</td>
+                  <td className="px-4 py-3 text-right font-medium text-gray-700">${ps.basic_pay?.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right font-bold text-gray-900">${ps.gross_pay?.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right font-medium text-rose-600">-${ps.total_deductions?.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right font-black text-emerald-700">${ps.net_pay?.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => setActivePayslip(ps)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700 font-medium transition-colors"
+                    >
+                      <Eye size={12} /> View Breakdown
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Itemized Payslip Drawer Modal (PART D & E) */}
+      {activePayslip && (
+        <PayslipDrawerModal
+          payslip={activePayslip}
+          onClose={() => setActivePayslip(null)}
+        />
+      )}
     </div>
   )
 }
