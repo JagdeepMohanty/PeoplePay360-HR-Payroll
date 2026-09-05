@@ -6,7 +6,7 @@ Clears all tables and inserts fresh demo data.
 import json
 from datetime import datetime
 
-from database import Base, engine, SessionLocal
+from .database import Base, engine, SessionLocal
 from models.employee import Employee
 from models.contract import Contract
 from models.attendance import Attendance
