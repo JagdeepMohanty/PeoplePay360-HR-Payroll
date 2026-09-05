@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from config import settings
-from database import Base, engine
+from database import Base, engine, get_db
 from routers import (
     auth,
     users,
@@ -31,16 +33,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS configuration supporting credentials and dev server ports
+# CORS configuration supporting credentials and allowed origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins if settings.cors_origins else ["http://localhost:5173"],
+    allow_origins=settings.cors_origins if isinstance(settings.cors_origins, list) else ["http://localhost:5173"],
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Router registration
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users (Admin)"])
 app.include_router(employees.router, prefix="/api/v1/employees", tags=["Employees"])
@@ -54,6 +57,19 @@ app.include_router(payruns.router, prefix="/payruns", tags=["Payruns (Direct)"])
 app.include_router(dashboard.router, prefix="/api/v1/reports", tags=["Dashboard"])
 
 
+@app.get("/health", tags=["Health"])
 @app.get("/api/health", tags=["Health"])
-def health_check():
-    return {"status": "ok", "service": "PeoplePay360 RBAC API"}
+def health_check(db: Session = Depends(get_db)):
+    db_status = "healthy"
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception:
+        db_status = "unhealthy"
+
+    return {
+        "status": "healthy" if db_status == "healthy" else "degraded",
+        "service": "PeoplePay360 HR & Payroll Engine",
+        "version": "2.0.0",
+        "environment": settings.environment,
+        "database": db_status,
+    }

@@ -1,11 +1,15 @@
 from pydantic_settings import BaseSettings
-from typing import List
+from pydantic import field_validator
+from typing import List, Union
 import os
+
 
 class Settings(BaseSettings):
     # Core settings
+    environment: str = "development"
+    debug: bool = False
     database_url: str = "sqlite:///./peoplepay360.db"
-    secret_key: str = "test_secret_key"
+    secret_key: str = "change_this_to_a_secure_random_key_in_production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
@@ -18,17 +22,29 @@ class Settings(BaseSettings):
     # PDF storage directory
     pdf_storage_path: str = "./storage/payslips"
 
-    # CORS origins (comma‑separated in env, parsed to list)
-    cors_origins: List[str] = ["http://localhost:5173"]
+    # CORS origins
+    cors_origins: Union[List[str], str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+    ]
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v: Union[List[str], str]) -> List[str]:
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
 
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"
 
     def model_post_init(self, __context):
         # Ensure storage dir exists at runtime
         os.makedirs(self.pdf_storage_path, exist_ok=True)
 
-# Instantiate settings; model_post_init will create storage dir
-settings = Settings()
 
+# Instantiate settings singleton
+settings = Settings()
