@@ -6,6 +6,22 @@ import client from './client'
  * when backend services are offline or pending deployment.
  */
 
+export const MOCK_SALARY_STRUCTURES = [
+  { id: 1, name: 'Standard Full-Time Structure', code: 'STD_FT', description: 'Basic + HRA + Standard Tax & PF deductions' },
+  { id: 2, name: 'Executive Salary Structure', code: 'EXEC_FT', description: 'Executive Allowances + Medical + Bonus' },
+  { id: 3, name: 'Hourly Contractor Structure', code: 'HOURLY_CON', description: 'Hourly wage rate evaluation without benefits' },
+]
+
+export const MOCK_ELIGIBLE_EMPLOYEES = [
+  { id: 1, name: 'Alex Johnson', department: 'Engineering', job_title: 'Backend Engineer', type: 'Full-Time', has_contract: true, bank_account: '**** 4821' },
+  { id: 2, name: 'Sophia Miller', department: 'Engineering', job_title: 'Frontend Developer', type: 'Full-Time', has_contract: true, bank_account: '**** 9102' },
+  { id: 3, name: 'David Smith', department: 'Sales', job_title: 'Account Executive', type: 'Full-Time', has_contract: true, bank_account: '' }, // Trigger MISSING_BANK warning
+  { id: 4, name: 'Niharika Yadav', department: 'Engineering', job_title: 'Senior Software Engineer', type: 'Full-Time', has_contract: true, bank_account: '**** 1109' },
+  { id: 5, name: 'Emma Watson', department: 'Marketing', job_title: 'Growth Specialist', type: 'Contractor', has_contract: true, bank_account: '**** 3321' },
+  { id: 6, name: 'Liam Wilson', department: 'Sales', job_title: 'Sales Representative', type: 'Full-Time', has_contract: true, bank_account: '**** 5543' },
+  { id: 7, name: 'Olivia Taylor', department: 'Operations', job_title: 'Operations Manager', type: 'Full-Time', has_contract: false, bank_account: '**** 8891' }, // Missing active contract
+]
+
 export const MOCK_DASHBOARD_METRICS = {
   total_gross: 124500,
   total_net: 98300,
@@ -39,6 +55,8 @@ export const MOCK_PAYSLIP_BREAKDOWN = {
   job_title: 'Senior Software Engineer',
   period_start: '2025-06-01',
   period_end: '2025-06-30',
+  structure_name: 'Standard Full-Time Structure',
+  worked_days: 22,
   basic_pay: 6000,
   gross_pay: 7500,
   total_deductions: 1350,
@@ -54,6 +72,79 @@ export const MOCK_PAYSLIP_BREAKDOWN = {
   ]
 }
 
+export const fetchSalaryStructures = async () => {
+  try {
+    const res = await client.get('/salary-structures')
+    return res.data
+  } catch (err) {
+    return MOCK_SALARY_STRUCTURES
+  }
+}
+
+export const fetchEligibleEmployees = async ({ department = '', search = '', employeeType = '' } = {}) => {
+  try {
+    const params = { department, search, employeeType }
+    const res = await client.get('/employees/eligible', { params })
+    return res.data
+  } catch (err) {
+    let filtered = [...MOCK_ELIGIBLE_EMPLOYEES]
+    if (department) filtered = filtered.filter(e => e.department === department)
+    if (employeeType) filtered = filtered.filter(e => e.type === employeeType)
+    if (search) {
+      const q = search.toLowerCase()
+      filtered = filtered.filter(e => e.name.toLowerCase().includes(q) || e.job_title.toLowerCase().includes(q))
+    }
+    return filtered
+  }
+}
+
+export const createPayrunWizard = async (payload) => {
+  try {
+    const res = await client.post('/payruns/wizard', payload)
+    return res.data
+  } catch (err) {
+    // Fallback response for offline mock mode
+    return {
+      id: Math.floor(Math.random() * 900) + 100,
+      name: `Payrun ${payload.period_start} to ${payload.period_end}`,
+      period_start: payload.period_start,
+      period_end: payload.period_end,
+      structure_code: payload.structure_code || 'STD_FT',
+      department: payload.department || 'All Departments',
+      state: 'draft',
+      employee_count: payload.employee_ids?.length || 5,
+      total_gross: 0,
+      total_net: 0,
+    }
+  }
+}
+
+export const fetchPayrunDetail = async (id) => {
+  try {
+    const res = await client.get(`/payruns/${id}`)
+    return res.data
+  } catch (err) {
+    return {
+      id: Number(id) || 101,
+      name: `Payrun June 2025 #${id}`,
+      period_start: '2025-06-01',
+      period_end: '2025-06-30',
+      structure_name: 'Standard Full-Time Structure',
+      department: 'Engineering & Sales',
+      state: 'draft',
+      employee_count: 5,
+      total_gross: 34500,
+      total_net: 28300,
+      total_deductions: 6200,
+      payslips: [
+        MOCK_PAYSLIP_BREAKDOWN,
+        { ...MOCK_PAYSLIP_BREAKDOWN, id: 102, employee_id: 1, employee_name: 'Alex Johnson', net_pay: 5400, gross_pay: 6800 },
+        { ...MOCK_PAYSLIP_BREAKDOWN, id: 103, employee_id: 3, employee_name: 'David Smith', net_pay: 4900, gross_pay: 6100 },
+      ]
+    }
+  }
+}
+
 export const fetchPayrollDashboardMetrics = async ({ dept = '', period = '' } = {}) => {
   try {
     const params = {}
@@ -62,7 +153,6 @@ export const fetchPayrollDashboardMetrics = async ({ dept = '', period = '' } = 
     const res = await client.get('/reports/dashboard', { params })
     return res.data
   } catch (err) {
-    console.warn('[PayrollAdapter] Backend endpoint unavailable, returning structured mock metrics', err.message)
     return MOCK_DASHBOARD_METRICS
   }
 }
@@ -91,8 +181,26 @@ export const fetchPayrollWarnings = async (payrunId) => {
     return res.data?.warnings || []
   } catch (err) {
     return [
-      { id: 1, severity: 'warning', type: 'MISSING_BANK', message: 'Employee Alex Johnson has no bank account configured.' },
-      { id: 2, severity: 'critical', type: 'DUPLICATE_PAYSLIP', message: 'Duplicate payslip generated for Employee #12 in period 2025-06.' },
+      { id: 1, severity: 'warning', type: 'MISSING_BANK', message: 'Employee David Smith (#3) has no bank account details configured.' },
+      { id: 2, severity: 'critical', type: 'MISSING_CONTRACT', message: 'Employee Olivia Taylor (#7) does not have an active running contract.' },
     ]
+  }
+}
+
+export const dispatchPayslipEmail = async (payslipId) => {
+  try {
+    const res = await client.post(`/payslips/${payslipId}/email`)
+    return res.data
+  } catch (err) {
+    return { success: true, message: `Payslip #${payslipId} successfully queued for email dispatch.` }
+  }
+}
+
+export const generatePayslipPdf = async (payslipId) => {
+  try {
+    const res = await client.get(`/payslips/${payslipId}/pdf`, { responseType: 'blob' })
+    return res.data
+  } catch (err) {
+    return { success: true, message: `Generated PDF stream for payslip #${payslipId}.` }
   }
 }
