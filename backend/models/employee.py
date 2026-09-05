@@ -16,4 +16,5 @@ class Employee(Base):
     contracts = relationship("Contract", back_populates="employee")
     attendances = relationship("Attendance", back_populates="employee")
     leaves = relationship("Leave", back_populates="employee")
+    leave_allocations = relationship("LeaveAllocation", back_populates="employee")
     payslips = relationship("Payslip", back_populates="employee")
