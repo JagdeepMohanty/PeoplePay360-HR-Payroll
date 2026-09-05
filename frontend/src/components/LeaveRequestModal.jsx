@@ -6,9 +6,9 @@ export default function LeaveRequestModal({ isOpen, onClose, onSuccess, employee
   const [formData, setFormData] = useState({
     employee_id: employees.length > 0 ? employees[0].id : 1,
     type_id: types.length > 0 ? types[0].id : 1,
-    date_from: '2025-07-20',
-    date_to: '2025-07-21',
-    duration_days: 2.0,
+    date_from: new Date().toISOString().split('T')[0],
+    date_to: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    duration_days: 1.0,
     is_unpaid: false,
   })
   const [loading, setLoading] = useState(false)
@@ -48,33 +48,33 @@ export default function LeaveRequestModal({ isOpen, onClose, onSuccess, employee
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-      <div className="w-full max-w-md glass-panel border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/60">
-          <div className="flex items-center space-x-2">
-            <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-              <Calendar className="w-5 h-5" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-xs">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 border-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-amber-50 text-amber-700">
+              <Calendar className="w-4 h-4" />
             </div>
-            <h3 className="text-base font-bold text-white">New Time Off Request</h3>
+            <h3 className="text-sm font-bold text-slate-900">New Time Off Request</h3>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 border-0 cursor-pointer">
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs font-semibold">
+            <div className="p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-semibold border-0">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Employee</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Employee</label>
             <select
               value={formData.employee_id}
               onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:border-brand-500 focus:outline-none"
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 text-slate-800 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#714b67]/20 border-0 outline-none"
             >
               {employees.map((emp) => (
                 <option key={emp.id} value={emp.id}>
@@ -85,11 +85,11 @@ export default function LeaveRequestModal({ isOpen, onClose, onSuccess, employee
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Leave Type</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Leave Type</label>
             <select
               value={formData.type_id}
               onChange={(e) => handleTypeChange(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:border-brand-500 focus:outline-none"
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 text-slate-800 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#714b67]/20 border-0 outline-none"
             >
               {types.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -101,30 +101,30 @@ export default function LeaveRequestModal({ isOpen, onClose, onSuccess, employee
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Date From</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Date From</label>
               <input
                 type="date"
                 required
                 value={formData.date_from}
                 onChange={(e) => setFormData({ ...formData, date_from: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:border-brand-500 focus:outline-none"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 text-slate-800 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#714b67]/20 border-0 outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Date To</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Date To</label>
               <input
                 type="date"
                 required
                 value={formData.date_to}
                 onChange={(e) => setFormData({ ...formData, date_to: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm focus:border-brand-500 focus:outline-none"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 text-slate-800 text-xs font-medium focus:bg-white focus:ring-2 focus:ring-[#714b67]/20 border-0 outline-none"
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border-0">
             <div>
-              <label className="block text-xs font-semibold text-slate-300">Duration (Days)</label>
+              <label className="block text-xs font-semibold text-slate-700">Duration (Days)</label>
               <span className="text-[11px] text-slate-400">Total days deducted from allocation</span>
             </div>
             <input
@@ -133,33 +133,33 @@ export default function LeaveRequestModal({ isOpen, onClose, onSuccess, employee
               required
               value={formData.duration_days}
               onChange={(e) => setFormData({ ...formData, duration_days: e.target.value })}
-              className="w-20 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-sm font-bold text-center focus:border-brand-500 focus:outline-none"
+              className="w-20 px-3 py-1.5 rounded-lg bg-white text-slate-800 text-xs font-bold text-center border-0 shadow-2xs focus:ring-2 focus:ring-[#714b67]/20 outline-none"
             />
           </div>
 
-          <div className="flex items-center space-x-2 pt-1">
+          <div className="flex items-center gap-2 pt-1">
             <input
               type="checkbox"
               id="is_unpaid"
               checked={formData.is_unpaid}
               onChange={(e) => setFormData({ ...formData, is_unpaid: e.target.checked })}
-              className="rounded border-slate-700 text-amber-500 focus:ring-amber-500 bg-slate-900"
+              className="rounded text-[#714b67] focus:ring-[#714b67] cursor-pointer"
             />
-            <label htmlFor="is_unpaid" className="text-xs font-medium text-amber-300 cursor-pointer">
+            <label htmlFor="is_unpaid" className="text-xs font-medium text-slate-700 cursor-pointer">
               Mark as Unpaid Leave (Triggers LOP deduction in Payroll)
             </label>
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl text-xs font-medium text-slate-500 hover:bg-slate-100 border-0 cursor-pointer">
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-lg shadow-amber-500/20 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#714b67] hover:bg-[#5e3e56] text-white text-xs font-semibold shadow-xs disabled:opacity-50 border-0 cursor-pointer"
             >
-              <Check className="w-4 h-4" />
+              <Check className="w-3.5 h-3.5" />
               <span>{loading ? 'Submitting...' : 'Submit Request'}</span>
             </button>
           </div>

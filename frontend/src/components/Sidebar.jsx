@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import odooLogo from '../assets/odoo_logo.png'
 import {
   LayoutDashboard, Users, FileText, Clock, Umbrella,
   DollarSign, ChevronRight, Layers, Sliders, CalendarCheck
@@ -37,9 +38,7 @@ export default function Sidebar() {
       {/* Odoo App Header */}
       <div className="h-14 px-4 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-[#714b67] flex items-center justify-center text-white font-bold shadow-xs">
-            <Layers className="h-4 w-4" />
-          </div>
+          <img src={odooLogo} alt="Odoo" className="h-7 w-auto object-contain" />
           <div className="flex flex-col">
             <span className="font-semibold text-xs tracking-tight text-slate-900 flex items-center gap-1.5">
               PeoplePay360
