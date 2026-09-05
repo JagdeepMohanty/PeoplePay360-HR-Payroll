@@ -15,3 +15,16 @@ class Leave(Base):
     state = Column(String, default="draft")  # draft | approved | refused
 
     employee = relationship("Employee", back_populates="leaves")
+
+
+class LeaveAllocation(Base):
+    __tablename__ = "leave_allocations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    leave_type = Column(String, nullable=False)   # e.g. "paid" | "unpaid" | "sick"
+    allocated_days = Column(Float, nullable=False)
+    used_days = Column(Float, default=0.0)
+    year = Column(Integer, nullable=False)
+
+    employee = relationship("Employee", back_populates="leave_allocations")

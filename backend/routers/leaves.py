@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models.leave import Leave
+from models.leave import Leave, LeaveAllocation
 from schemas.leave import LeaveCreate, LeaveRead
 
 router = APIRouter()
@@ -26,7 +26,46 @@ def approve_leave(leave_id: int, db: Session = Depends(get_db)):
     leave = db.query(Leave).filter(Leave.id == leave_id).first()
     if not leave:
         raise HTTPException(status_code=404, detail="Leave request not found")
+    if leave.state == "approved":
+        raise HTTPException(status_code=400, detail="Leave request is already approved")
+
+    # Locate the matching allocation for this employee + leave type
+    allocation = db.query(LeaveAllocation).filter(
+        LeaveAllocation.employee_id == leave.employee_id,
+        LeaveAllocation.leave_type == leave.leave_type,
+    ).first()
+
+    if not allocation:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No '{leave.leave_type}' allocation found for employee {leave.employee_id}.",
+        )
+
+    remaining = allocation.allocated_days - allocation.used_days
+    if leave.days > remaining:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Insufficient balance. Requested {leave.days} day(s) but only "
+                f"{remaining} day(s) remaining in '{leave.leave_type}' allocation."
+            ),
+        )
+
+    allocation.used_days += leave.days
     leave.state = "approved"
+    db.commit()
+    db.refresh(leave)
+    return leave
+
+
+@router.post("/refuse/{leave_id}", response_model=LeaveRead)
+def refuse_leave(leave_id: int, db: Session = Depends(get_db)):
+    leave = db.query(Leave).filter(Leave.id == leave_id).first()
+    if not leave:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+    if leave.state == "approved":
+        raise HTTPException(status_code=400, detail="Cannot refuse an already approved leave")
+    leave.state = "refused"
     db.commit()
     db.refresh(leave)
     return leave
