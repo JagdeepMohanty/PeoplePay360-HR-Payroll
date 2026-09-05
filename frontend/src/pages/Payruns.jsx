@@ -1,18 +1,26 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getPayruns } from '../api/payruns'
+import { useAuth } from '../context/AuthContext'
 import PayrunWizardModal from '../components/PayrunWizardModal'
-import { DollarSign, Plus, ChevronRight, Layers, Calendar, CheckCircle2 } from 'lucide-react'
+import { DollarSign, Plus, ChevronRight, Layers, Calendar, CheckCircle2, ShieldAlert } from 'lucide-react'
 
 export default function Payruns() {
+  const { activeRole } = useAuth()
   const [payruns, setPayruns] = useState([])
   const [loading, setLoading] = useState(true)
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const navigate = useNavigate()
 
+  const isPayrollAuthorized = ['ADMIN', 'HR_PAYROLL_USER', 'HR_PAYROLL_MANAGER'].includes(activeRole)
+
   useEffect(() => {
-    loadPayruns()
-  }, [])
+    if (isPayrollAuthorized) {
+      loadPayruns()
+    } else {
+      setLoading(false)
+    }
+  }, [activeRole, isPayrollAuthorized])
 
   const loadPayruns = async () => {
     setLoading(true)
@@ -43,6 +51,23 @@ export default function Payruns() {
       default:
         return 'bg-slate-700 text-slate-300 border-slate-600'
     }
+  }
+
+  if (!isPayrollAuthorized) {
+    return (
+      <div className="p-8 max-w-lg mx-auto text-center glass-panel border border-red-500/30 rounded-2xl space-y-4 my-12">
+        <div className="w-12 h-12 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center mx-auto">
+          <ShieldAlert className="w-7 h-7" />
+        </div>
+        <h3 className="text-lg font-bold text-white">Payroll Access Restricted</h3>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Your current persona/role (<strong className="text-red-400 font-mono">{activeRole}</strong>) is restricted from accessing payroll calculation and batch execution workflows.
+        </p>
+        <p className="text-[11px] text-slate-400">
+          Only authorized roles (<strong>HR_PAYROLL_USER</strong>, <strong>HR_PAYROLL_MANAGER</strong>, and <strong>ADMIN</strong>) can execute payruns. Please use the persona switcher in the top bar to switch roles.
+        </p>
+      </div>
+    )
   }
 
   return (

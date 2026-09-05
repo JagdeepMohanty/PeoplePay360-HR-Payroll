@@ -84,6 +84,25 @@ def get_dashboard_metrics(
     payslip_count = len(payslips)
     average_salary = round(total_net / payslip_count, 2) if payslip_count > 0 else 0.0
 
+    # 6. Monthly Trends Aggregation
+    trend_payruns = db.query(Payrun).order_by(Payrun.period_start.asc()).all()
+    monthly_trends = []
+    seen_months = set()
+    for pr in trend_payruns:
+        m = pr.period_start[:7] if pr.period_start else "Unknown"
+        if m not in seen_months:
+            seen_months.add(m)
+            m_slips = db.query(Payslip).filter(Payslip.payrun_id == pr.id)
+            if target_dept:
+                m_slips = m_slips.join(Employee).filter(Employee.department == target_dept)
+            m_all = m_slips.all()
+            monthly_trends.append({
+                "month": m,
+                "net": round(sum(s.net for s in m_all), 2),
+                "gross": round(sum(s.gross for s in m_all), 2),
+                "payslips": len(m_all),
+            })
+
     return {
         "summary": {
             "total_employees": total_employees,
@@ -101,5 +120,6 @@ def get_dashboard_metrics(
             "payslip_count": payslip_count,
         },
         "by_department": by_department,
+        "monthly_trends": monthly_trends,
     }
 

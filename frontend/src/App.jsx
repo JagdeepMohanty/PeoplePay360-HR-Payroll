@@ -22,7 +22,10 @@ export default function App() {
           <Route path="contracts" element={<Contracts />} />
           <Route path="attendance" element={<Attendance />} />
           <Route path="time-off" element={<TimeOff />} />
+          <Route path="leaves" element={<Navigate to="/time-off" replace />} />
+          <Route path="timeoff" element={<Navigate to="/time-off" replace />} />
           <Route path="payruns" element={<Payruns />} />
+          <Route path="payroll" element={<Navigate to="/payruns" replace />} />
           <Route path="payruns/:id/process" element={<PayrunProcessing />} />
           <Route path="reports" element={<Dashboard />} />
           {/* Wildcard Fallback prevents any 404 client route */}

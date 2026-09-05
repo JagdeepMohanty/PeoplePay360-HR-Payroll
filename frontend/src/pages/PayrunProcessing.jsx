@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import {
   getPayrun,
   computePayrun,
@@ -22,11 +23,13 @@ import {
   FileText,
   Download,
   AlertCircle,
+  ShieldAlert,
 } from 'lucide-react'
 
 export default function PayrunProcessing() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { activeRole } = useAuth()
 
   const [payrun, setPayrun] = useState(null)
   const [payslips, setPayslips] = useState([])
@@ -38,9 +41,15 @@ export default function PayrunProcessing() {
   const [selectedPayslip, setSelectedPayslip] = useState(null)
   const [notification, setNotification] = useState('')
 
+  const isPayrollAuthorized = ['ADMIN', 'HR_PAYROLL_USER', 'HR_PAYROLL_MANAGER'].includes(activeRole)
+
   useEffect(() => {
-    loadData()
-  }, [id])
+    if (isPayrollAuthorized) {
+      loadData()
+    } else {
+      setLoading(false)
+    }
+  }, [id, activeRole, isPayrollAuthorized])
 
   const loadData = async () => {
     setLoading(true)
@@ -154,6 +163,26 @@ export default function PayrunProcessing() {
   const getEmpName = (empId) => {
     const emp = getEmpObj(empId)
     return emp ? emp.full_name || `${emp.first_name} ${emp.last_name}` : `Employee #${empId}`
+  }
+
+  if (!isPayrollAuthorized) {
+    return (
+      <div className="p-8 max-w-lg mx-auto text-center glass-panel border border-red-500/30 rounded-2xl space-y-4 my-12">
+        <div className="w-12 h-12 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center mx-auto">
+          <ShieldAlert className="w-7 h-7" />
+        </div>
+        <h3 className="text-lg font-bold text-white">Payroll Processing Restricted</h3>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Your current persona/role (<strong className="text-red-400 font-mono">{activeRole}</strong>) does not have access to payrun batch computation and payslip processing.
+        </p>
+        <p className="text-[11px] text-slate-400">
+          Only authorized roles (<strong>HR_PAYROLL_USER</strong>, <strong>HR_PAYROLL_MANAGER</strong>, and <strong>ADMIN</strong>) can access this workspace.
+        </p>
+        <button onClick={() => navigate('/employees')} className="px-4 py-2 rounded-xl bg-slate-800 text-white text-xs font-semibold hover:bg-slate-700">
+          Back to Directory
+        </button>
+      </div>
+    )
   }
 
   if (loading) {
