@@ -190,10 +190,6 @@ export default function EmployeeDetail() {
               <span className="text-slate-900 font-semibold">{employee.job_position}</span>
             </div>
           </div>
-        ) : (
-          <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-800 text-xs">
-            <div className="space-y-3 p-4 rounded-xl bg-slate-900/50 border border-brand-500/40">
-              <h4 className="font-bold text-brand-300 uppercase tracking-wider">Edit Identity & Role</h4>
 
           <div className="space-y-3 p-4 rounded-xl bg-slate-50/70 text-xs">
             <h4 className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Work Schedule & Financials</h4>
@@ -215,8 +211,8 @@ export default function EmployeeDetail() {
                 </span>
               )}
             </div>
-          </form>
-        )}
+          </div>
+        </div>
       </div>
     </div>
   )
