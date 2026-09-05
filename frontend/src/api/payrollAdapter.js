@@ -15,20 +15,24 @@ export const MOCK_SALARY_STRUCTURES = [
 export const MOCK_ELIGIBLE_EMPLOYEES = [
   { id: 1, name: 'Alex Johnson', department: 'Engineering', job_title: 'Backend Engineer', type: 'Full-Time', has_contract: true, bank_account: '**** 4821' },
   { id: 2, name: 'Sophia Miller', department: 'Engineering', job_title: 'Frontend Developer', type: 'Full-Time', has_contract: true, bank_account: '**** 9102' },
-  { id: 3, name: 'David Smith', department: 'Sales', job_title: 'Account Executive', type: 'Full-Time', has_contract: true, bank_account: '' }, // Trigger MISSING_BANK warning
+  { id: 3, name: 'David Smith', department: 'Sales', job_title: 'Account Executive', type: 'Full-Time', has_contract: true, bank_account: '' },
   { id: 4, name: 'Niharika Yadav', department: 'Engineering', job_title: 'Senior Software Engineer', type: 'Full-Time', has_contract: true, bank_account: '**** 1109' },
   { id: 5, name: 'Emma Watson', department: 'Marketing', job_title: 'Growth Specialist', type: 'Contractor', has_contract: true, bank_account: '**** 3321' },
   { id: 6, name: 'Liam Wilson', department: 'Sales', job_title: 'Sales Representative', type: 'Full-Time', has_contract: true, bank_account: '**** 5543' },
-  { id: 7, name: 'Olivia Taylor', department: 'Operations', job_title: 'Operations Manager', type: 'Full-Time', has_contract: false, bank_account: '**** 8891' }, // Missing active contract
+  { id: 7, name: 'Olivia Taylor', department: 'Operations', job_title: 'Operations Manager', type: 'Full-Time', has_contract: false, bank_account: '**** 8891' },
 ]
 
 export const MOCK_DASHBOARD_METRICS = {
   total_gross: 124500,
   total_net: 98300,
   total_deductions: 26200,
+  payslips_generated: 48,
+  avg_salary: 2593,
   active_employees: 48,
   processed_payruns: 12,
   pending_warnings: 3,
+  approved_time_off_days: 14.5,
+  attendance_health_rate: 96.4,
   by_department: {
     Engineering: { gross: 55000, net: 43500, deductions: 11500, employee_count: 18 },
     Sales: { gross: 32000, net: 25200, deductions: 6800, employee_count: 14 },
@@ -44,6 +48,28 @@ export const MOCK_MONTHLY_TREND = [
   { month: 'Apr', gross: 118000, net: 93200, deductions: 24800 },
   { month: 'May', gross: 121000, net: 95500, deductions: 25500 },
   { month: 'Jun', gross: 124500, net: 98300, deductions: 26200 },
+]
+
+export const MOCK_ATTENDANCE_OVERVIEW = {
+  present: 42,
+  late: 4,
+  absent: 2,
+  overtime_hours: 38.5,
+  missing_checkouts: 1,
+  manual_edits: 3,
+  attendance_coverage_pct: 96.4,
+}
+
+export const MOCK_TIMEOFF_OVERVIEW = {
+  approved_days: 14.5,
+  pending_requests: 3,
+  leave_balance_days: 124.0,
+}
+
+export const MOCK_OPERATIONAL_ALERTS = [
+  { id: 1, title: 'Missing Bank Account Information', description: 'Employee David Smith (#3) has no bank routing/account set.', severity: 'warning' },
+  { id: 2, title: 'Contract Renewal Attention', description: 'Employee Olivia Taylor (#7) contract expired on 2025-05-31.', severity: 'critical' },
+  { id: 3, title: 'Duplicate Payslip Prevention', description: 'Prevented duplicate payrun calculation for June 2025.', severity: 'info' },
 ]
 
 export const MOCK_PAYSLIP_BREAKDOWN = {
@@ -103,7 +129,6 @@ export const createPayrunWizard = async (payload) => {
     const res = await client.post('/payruns/wizard', payload)
     return res.data
   } catch (err) {
-    // Fallback response for offline mock mode
     return {
       id: Math.floor(Math.random() * 900) + 100,
       name: `Payrun ${payload.period_start} to ${payload.period_end}`,
@@ -145,15 +170,25 @@ export const fetchPayrunDetail = async (id) => {
   }
 }
 
-export const fetchPayrollDashboardMetrics = async ({ dept = '', period = '' } = {}) => {
+export const fetchPayrollDashboardMetrics = async ({ dept = '', period = '', employeeType = '' } = {}) => {
   try {
     const params = {}
     if (dept) params.dept = dept
     if (period) params.period = period
+    if (employeeType) params.employeeType = employeeType
     const res = await client.get('/reports/dashboard', { params })
     return res.data
   } catch (err) {
-    return MOCK_DASHBOARD_METRICS
+    let metrics = { ...MOCK_DASHBOARD_METRICS }
+    if (dept && metrics.by_department[dept]) {
+      const deptData = metrics.by_department[dept]
+      metrics.total_gross = deptData.gross
+      metrics.total_net = deptData.net
+      metrics.total_deductions = deptData.deductions
+      metrics.active_employees = deptData.employee_count
+      metrics.by_department = { [dept]: deptData }
+    }
+    return metrics
   }
 }
 
@@ -163,6 +198,33 @@ export const fetchMonthlyPayrollTrend = async () => {
     return res.data
   } catch (err) {
     return MOCK_MONTHLY_TREND
+  }
+}
+
+export const fetchAttendanceOverview = async ({ dept = '', period = '' } = {}) => {
+  try {
+    const res = await client.get('/reports/attendance-overview', { params: { dept, period } })
+    return res.data
+  } catch (err) {
+    return MOCK_ATTENDANCE_OVERVIEW
+  }
+}
+
+export const fetchTimeOffOverview = async ({ dept = '', period = '' } = {}) => {
+  try {
+    const res = await client.get('/reports/timeoff-overview', { params: { dept, period } })
+    return res.data
+  } catch (err) {
+    return MOCK_TIMEOFF_OVERVIEW
+  }
+}
+
+export const fetchOperationalAlerts = async () => {
+  try {
+    const res = await client.get('/reports/operational-alerts')
+    return res.data
+  } catch (err) {
+    return MOCK_OPERATIONAL_ALERTS
   }
 }
 
