@@ -12,6 +12,7 @@ import {
   PieChart as PieChartIcon,
   ShieldCheck,
   ArrowUpRight,
+  RotateCcw,
 } from 'lucide-react'
 import {
   BarChart,
