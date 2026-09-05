@@ -10,6 +10,11 @@ export const getMeApi = async () => {
   return response.data
 }
 
+export const switchEmployeeApi = async (employeeId) => {
+  const response = await client.post(`/auth/switch-employee/${employeeId}`)
+  return response.data
+}
+
 export const ROLE_ACCOUNTS = [
   { role: 'ADMIN', label: 'Admin', email: 'admin@peoplepay360.dev' },
   { role: 'HR_MANAGER', label: 'HR Manager', email: 'hr.manager@peoplepay360.dev' },
