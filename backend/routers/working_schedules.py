@@ -14,7 +14,8 @@ from schemas.working_schedule import (
 router = APIRouter()
 
 
-@router.get("/", response_model=list[WorkingScheduleRead])
+@router.get("", response_model=list[WorkingScheduleRead])
+@router.get("/", response_model=list[WorkingScheduleRead], include_in_schema=False)
 def list_working_schedules(
     db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
@@ -33,7 +34,8 @@ def get_working_schedule(
     return sched
 
 
-@router.post("/", response_model=WorkingScheduleRead, status_code=201)
+@router.post("", response_model=WorkingScheduleRead, status_code=201)
+@router.post("/", response_model=WorkingScheduleRead, status_code=201, include_in_schema=False)
 def create_working_schedule(
     payload: WorkingScheduleCreate,
     db: Session = Depends(get_db),

@@ -63,9 +63,12 @@ export default function PayrunProcessing() {
       setPayrun(prData)
       setEmployees(empData || [])
 
-      // Auto compute if draft or slips exist
-      const computedSlips = await computePayrun(id)
-      setPayslips(computedSlips || [])
+      if (['VALIDATED', 'PAID'].includes(prData.status)) {
+        setPayslips(prData.payslips || [])
+      } else {
+        const computedSlips = await computePayrun(id)
+        setPayslips(computedSlips || [])
+      }
 
       // Auto validate Guardian warnings
       const valRes = await validatePayrun(id)

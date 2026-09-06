@@ -8,7 +8,8 @@ from schemas.user import UserCreate, UserRead, UserUpdate
 router = APIRouter(dependencies=[Depends(require_admin)])
 
 
-@router.get("/", response_model=list[UserRead])
+@router.get("", response_model=list[UserRead])
+@router.get("/", response_model=list[UserRead], include_in_schema=False)
 def list_users(db: Session = Depends(get_db)):
     return db.query(User).all()
 
@@ -21,7 +22,8 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
     return user
 
 
-@router.post("/", response_model=UserRead, status_code=201)
+@router.post("", response_model=UserRead, status_code=201)
+@router.post("/", response_model=UserRead, status_code=201, include_in_schema=False)
 def create_user(payload: UserCreate, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == payload.email).first()
     if existing:

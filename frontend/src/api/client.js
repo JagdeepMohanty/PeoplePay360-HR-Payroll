@@ -21,4 +21,25 @@ client.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
+// Global response interceptor for 401 (token expiration) and 403 (unauthorized)
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      const { status } = error.response
+      if (status === 401) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        if (window.location.pathname !== '/login') {
+          console.warn('Session expired or unauthorized. Redirecting to login.')
+          window.location.href = '/login'
+        }
+      } else if (status === 403) {
+        console.warn('Access forbidden for current user role:', error.response.data?.detail)
+      }
+    }
+    return Promise.reject(error)
+  }
+)
+
 export default client
