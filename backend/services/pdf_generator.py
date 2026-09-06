@@ -1,6 +1,6 @@
 """
-PDF Generator — High-Performance Production Odoo ERP Payslip Generator
-Generates pixel-perfect, executive-grade PDF payslips via ReportLab with embedded Odoo branding.
+PDF Generator — High-Performance Production Payslip Generator
+Generates pixel-perfect, executive-grade PDF payslips via ReportLab with generic branding.
 """
 import io
 import json
@@ -15,12 +15,9 @@ from reportlab.platypus import (
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch, mm
 
-# Path to Odoo brand logo
-LOGO_PATH = Path(__file__).resolve().parent.parent.parent / "frontend" / "src" / "assets" / "odoo_logo.png"
-
 # Brand colors
-ODOO_PLUM = colors.HexColor("#714B67")
-ODOO_TEAL = colors.HexColor("#00A09D")
+BRAND_PLUM = colors.HexColor("#714B67")
+BRAND_TEAL = colors.HexColor("#00A09D")
 SLATE_DARK = colors.HexColor("#0f172a")
 SLATE_MUTED = colors.HexColor("#64748b")
 BG_LIGHT = colors.HexColor("#f8fafc")
@@ -50,7 +47,7 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
         fontName="Helvetica-Bold",
         fontSize=18,
         leading=22,
-        textColor=ODOO_PLUM,
+        textColor=BRAND_PLUM,
     )
     subtitle_style = ParagraphStyle(
         "DocSubTitle",
@@ -116,7 +113,7 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
         fontSize=16,
         leading=20,
         alignment=2,
-        textColor=ODOO_PLUM,
+        textColor=BRAND_PLUM,
     )
 
     # 1. Header with Logo and Company Info
@@ -127,16 +124,13 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
     period_str = f"{period_start} to {period_end}" if period_start else "Current Pay Period"
 
     # Logo element
-    if LOGO_PATH.exists():
-        logo_img = Image(str(LOGO_PATH), width=90, height=30)
-    else:
-        logo_img = Paragraph("<b>Odoo ERP</b>", title_style)
+    logo_img = Paragraph("<font color='#714B67'><b>PeoplePay360</b></font>", title_style)
 
     header_left = [
         logo_img,
         Spacer(1, 4),
-        Paragraph("PeoplePay360 Global Workforce ERP", subtitle_style),
-        Paragraph("People Technology & Enterprise Payroll Systems", label_style),
+        Paragraph("Enterprise Payroll & Workforce ERP", subtitle_style),
+        Paragraph("People Technology Systems", label_style),
     ]
 
     header_right = [
@@ -157,7 +151,7 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
         ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
     ]))
     elements.append(header_table)
-    elements.append(HRFlowable(width="100%", thickness=1.5, color=ODOO_PLUM, spaceBefore=4, spaceAfter=14))
+    elements.append(HRFlowable(width="100%", thickness=1.5, color=BRAND_PLUM, spaceBefore=4, spaceAfter=14))
 
     # 2. Employee Metadata Card
     bank_acc = payslip_data.get("bank_account", "GB29NWBK60161331926819") or "Registered Corporate Direct Deposit"
@@ -251,7 +245,7 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
 
     items_table = Table(items_data, colWidths=[175, 80, 180, 80])
     items_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), ODOO_PLUM),
+        ("BACKGROUND", (0, 0), (-1, 0), BRAND_PLUM),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING", (0, 0), (-1, -1), 6),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
@@ -261,7 +255,7 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
         ("BACKGROUND", (0, 4), (-1, 4), BG_LIGHT),
         ("BOX", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("INNERGRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ("LINEBELOW", (0, 0), (-1, 0), 1, ODOO_PLUM),
+        ("LINEBELOW", (0, 0), (-1, 0), 1, BRAND_PLUM),
     ]))
     elements.append(items_table)
     elements.append(Spacer(1, 14))
@@ -275,8 +269,8 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
     ]
     net_table = Table(net_box_data, colWidths=[315, 200])
     net_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f3e8f0")), # Soft Odoo plum tint
-        ("BOX", (0, 0), (-1, -1), 1, ODOO_PLUM),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f3e8f0")), # Soft brand plum tint
+        ("BOX", (0, 0), (-1, -1), 1, BRAND_PLUM),
         ("TOPPADDING", (0, 0), (-1, -1), 10),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
         ("LEFTPADDING", (0, 0), (-1, -1), 12),
@@ -311,7 +305,7 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
     # Footer note
     elements.append(Spacer(1, 24))
     elements.append(Paragraph(
-        "<i>Note: This is a system-generated secure document from PeoplePay360 powered by Odoo ERP. No physical signature is required. For inquiries, contact payroll@peoplepay360.dev.</i>",
+        "<i>Note: This is a system-generated secure document from PeoplePay360. No physical signature is required. For inquiries, contact payroll@peoplepay360.dev.</i>",
         ParagraphStyle("FooterNote", fontName="Helvetica-Oblique", fontSize=7.5, leading=10, alignment=1, textColor=SLATE_MUTED)
     ))
 

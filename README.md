@@ -1,5 +1,5 @@
 # PeoplePay360 — Team Development & Run Guide
-### Odoo Hackathon 2026 · HR & Payroll Operations Platform
+### HR & Payroll Operations Platform
 
 > **Internal Team Guide for Local Setup, Database Seeding, Dev Servers & Testing.**
 
@@ -91,7 +91,7 @@ python seed.py --force
 ### 3. Dynamic Payslip PDF Generation
 - In **Payruns** or **Employee Detail**, click **Download PDF** on any payslip.
 - Generates a PDF-1.4 document using ReportLab featuring:
-  - Official Odoo header logo
+  - Official PeoplePay360 header logo
   - Dynamic employee info, bank account, and job position
   - Itemized Earnings & Deductions breakdown table
   - Prominent Net Payable highlight block

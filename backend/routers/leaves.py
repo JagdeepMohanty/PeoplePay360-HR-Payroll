@@ -40,6 +40,37 @@ def create_time_off_type(
     return tot
 
 
+@router.put("/types/{type_id}", response_model=TimeOffTypeRead)
+def update_time_off_type(
+    type_id: int,
+    payload: TimeOffTypeCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_hr_manager),
+):
+    tot = db.query(TimeOffType).filter(TimeOffType.id == type_id).first()
+    if not tot:
+        raise HTTPException(status_code=404, detail="Time Off Type not found")
+    for key, value in payload.model_dump().items():
+        setattr(tot, key, value)
+    db.commit()
+    db.refresh(tot)
+    return tot
+
+
+@router.delete("/types/{type_id}", status_code=204)
+def delete_time_off_type(
+    type_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_hr_manager),
+):
+    tot = db.query(TimeOffType).filter(TimeOffType.id == type_id).first()
+    if not tot:
+        raise HTTPException(status_code=404, detail="Time Off Type not found")
+    db.delete(tot)
+    db.commit()
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Leave Allocations Endpoints
 # ---------------------------------------------------------------------------
@@ -79,6 +110,37 @@ def create_leave_allocation(
     db.commit()
     db.refresh(alloc)
     return alloc
+
+
+@router.put("/allocations/{allocation_id}", response_model=LeaveAllocationRead)
+def update_leave_allocation(
+    allocation_id: int,
+    payload: LeaveAllocationCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_hr_manager),
+):
+    alloc = db.query(LeaveAllocation).filter(LeaveAllocation.id == allocation_id).first()
+    if not alloc:
+        raise HTTPException(status_code=404, detail="Leave allocation not found")
+    for key, value in payload.model_dump().items():
+        setattr(alloc, key, value)
+    db.commit()
+    db.refresh(alloc)
+    return alloc
+
+
+@router.delete("/allocations/{allocation_id}", status_code=204)
+def delete_leave_allocation(
+    allocation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_hr_manager),
+):
+    alloc = db.query(LeaveAllocation).filter(LeaveAllocation.id == allocation_id).first()
+    if not alloc:
+        raise HTTPException(status_code=404, detail="Leave allocation not found")
+    db.delete(alloc)
+    db.commit()
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -165,13 +227,17 @@ def approve_leave(
     )
 
     if allocation:
-        remaining = float(allocation.allocated_days or 0.0) - float(allocation.used_days or 0.0)
-        if leave.duration_days > remaining:
+        from decimal import Decimal
+        allocated = Decimal(str(allocation.allocated_days or 0))
+        used = Decimal(str(allocation.used_days or 0))
+        remaining = allocated - used
+        leave_days = Decimal(str(leave.duration_days))
+        if leave_days > remaining:
             raise HTTPException(
                 status_code=400,
-                detail=f"Insufficient leave balance. Requested {leave.duration_days} day(s), but remaining balance is {remaining} day(s).",
+                detail=f"Insufficient leave balance. Requested {leave.duration_days} day(s), but remaining balance is {float(remaining)} day(s).",
             )
-        allocation.used_days += leave.duration_days
+        allocation.used_days = float(used + leave_days)
     else:
         # If type requires allocation, throw 400
         time_off_type = db.query(TimeOffType).filter(TimeOffType.id == leave.type_id).first()
@@ -203,3 +269,24 @@ def refuse_leave(
     db.commit()
     db.refresh(leave)
     return leave
+
+
+@router.delete("/{leave_id}", status_code=204)
+def delete_leave_request(
+    leave_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    leave = db.query(LeaveRequest).filter(LeaveRequest.id == leave_id).first()
+    if not leave:
+        raise HTTPException(status_code=404, detail="Leave request not found")
+
+    is_admin = current_user.role in [UserRole.HR_MANAGER, UserRole.HR_PAYROLL_MANAGER, UserRole.ADMIN]
+    is_owner = current_user.employee_id and current_user.employee_id == leave.employee_id
+
+    if not (is_admin or is_owner):
+        raise HTTPException(status_code=403, detail="Operation not permitted for your role")
+
+    db.delete(leave)
+    db.commit()
+    return None

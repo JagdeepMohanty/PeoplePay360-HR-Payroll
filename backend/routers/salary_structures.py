@@ -113,3 +113,20 @@ def delete_salary_rule(
     db.commit()
     return None
 
+
+@router.put("/rules/{rule_id}", response_model=SalaryRuleRead)
+def update_salary_rule(
+    rule_id: int,
+    payload: SalaryRuleCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_salary_structure_write),
+):
+    rule = db.query(SalaryRule).filter(SalaryRule.id == rule_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Salary rule not found")
+    for key, value in payload.model_dump().items():
+        setattr(rule, key, value)
+    db.commit()
+    db.refresh(rule)
+    return rule
+
