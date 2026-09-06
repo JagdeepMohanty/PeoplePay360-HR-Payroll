@@ -1,6 +1,6 @@
 """
-PDF Generator — High-Performance Production Odoo ERP Payslip Generator
-Generates pixel-perfect, executive-grade PDF payslips via ReportLab with embedded Odoo branding.
+PDF Generator — High-Performance Production Payslip Generator
+Generates pixel-perfect, executive-grade PDF payslips via ReportLab with generic branding.
 """
 import io
 import json
@@ -16,8 +16,8 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch, mm
 
 # Brand colors
-ODOO_PLUM = colors.HexColor("#714B67")
-ODOO_TEAL = colors.HexColor("#00A09D")
+BRAND_PLUM = colors.HexColor("#714B67")
+BRAND_TEAL = colors.HexColor("#00A09D")
 SLATE_DARK = colors.HexColor("#0f172a")
 SLATE_MUTED = colors.HexColor("#64748b")
 BG_LIGHT = colors.HexColor("#f8fafc")
@@ -47,7 +47,7 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
         fontName="Helvetica-Bold",
         fontSize=18,
         leading=22,
-        textColor=ODOO_PLUM,
+        textColor=BRAND_PLUM,
     )
     subtitle_style = ParagraphStyle(
         "DocSubTitle",
@@ -113,7 +113,7 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
         fontSize=16,
         leading=20,
         alignment=2,
-        textColor=ODOO_PLUM,
+        textColor=BRAND_PLUM,
     )
 
     # 1. Header with Logo and Company Info
@@ -151,7 +151,7 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
         ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
     ]))
     elements.append(header_table)
-    elements.append(HRFlowable(width="100%", thickness=1.5, color=ODOO_PLUM, spaceBefore=4, spaceAfter=14))
+    elements.append(HRFlowable(width="100%", thickness=1.5, color=BRAND_PLUM, spaceBefore=4, spaceAfter=14))
 
     # 2. Employee Metadata Card
     bank_acc = payslip_data.get("bank_account", "GB29NWBK60161331926819") or "Registered Corporate Direct Deposit"
@@ -245,7 +245,7 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
 
     items_table = Table(items_data, colWidths=[175, 80, 180, 80])
     items_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), ODOO_PLUM),
+        ("BACKGROUND", (0, 0), (-1, 0), BRAND_PLUM),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING", (0, 0), (-1, -1), 6),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
@@ -255,7 +255,7 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
         ("BACKGROUND", (0, 4), (-1, 4), BG_LIGHT),
         ("BOX", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
         ("INNERGRID", (0, 0), (-1, -1), 0.5, BORDER_COLOR),
-        ("LINEBELOW", (0, 0), (-1, 0), 1, ODOO_PLUM),
+        ("LINEBELOW", (0, 0), (-1, 0), 1, BRAND_PLUM),
     ]))
     elements.append(items_table)
     elements.append(Spacer(1, 14))
@@ -269,8 +269,8 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
     ]
     net_table = Table(net_box_data, colWidths=[315, 200])
     net_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f3e8f0")), # Soft Odoo plum tint
-        ("BOX", (0, 0), (-1, -1), 1, ODOO_PLUM),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f3e8f0")), # Soft brand plum tint
+        ("BOX", (0, 0), (-1, -1), 1, BRAND_PLUM),
         ("TOPPADDING", (0, 0), (-1, -1), 10),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
         ("LEFTPADDING", (0, 0), (-1, -1), 12),

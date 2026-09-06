@@ -227,13 +227,17 @@ def approve_leave(
     )
 
     if allocation:
-        remaining = float(allocation.allocated_days or 0.0) - float(allocation.used_days or 0.0)
-        if leave.duration_days > remaining:
+        from decimal import Decimal
+        allocated = Decimal(str(allocation.allocated_days or 0))
+        used = Decimal(str(allocation.used_days or 0))
+        remaining = allocated - used
+        leave_days = Decimal(str(leave.duration_days))
+        if leave_days > remaining:
             raise HTTPException(
                 status_code=400,
-                detail=f"Insufficient leave balance. Requested {leave.duration_days} day(s), but remaining balance is {remaining} day(s).",
+                detail=f"Insufficient leave balance. Requested {leave.duration_days} day(s), but remaining balance is {float(remaining)} day(s).",
             )
-        allocation.used_days += leave.duration_days
+        allocation.used_days = float(used + leave_days)
     else:
         # If type requires allocation, throw 400
         time_off_type = db.query(TimeOffType).filter(TimeOffType.id == leave.type_id).first()
