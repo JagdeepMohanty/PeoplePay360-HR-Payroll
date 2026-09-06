@@ -3,7 +3,6 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { ROLE_ACCOUNTS } from '../api/auth'
 import { getEmployees } from '../api/employees'
-import odooLogo from '../assets/odoo_logo.png'
 import {
   Users,
   FileText,
@@ -77,7 +76,9 @@ export default function Navbar() {
         {/* Brand & App Title */}
         <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-start">
           <div className="flex items-center gap-3">
-            <img src={odooLogo} alt="Odoo" className="h-8 w-auto object-contain" />
+            <div className="w-8 h-8 rounded-xl bg-[#714b67] text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+              <DollarSign className="w-5 h-5 text-white" />
+            </div>
             <div className="border-l border-slate-200 pl-3">
               <span className="text-[15px] font-bold tracking-tight text-slate-900 block leading-none">
                 PeoplePay<span className="text-[#714b67]">360</span>

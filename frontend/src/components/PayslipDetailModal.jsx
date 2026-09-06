@@ -1,6 +1,5 @@
 import { X, Download, FileText, ExternalLink, Building, CreditCard, Calendar, User } from 'lucide-react'
 import { downloadPayslipPdfBlob } from '../api/payruns'
-import odooLogo from '../assets/odoo_logo.png'
 
 export default function PayslipDetailModal({ payslip, employee, payrun, isOpen, onClose }) {
   if (!isOpen || !payslip) return null
@@ -57,7 +56,9 @@ export default function PayslipDetailModal({ payslip, employee, payrun, isOpen, 
         {/* Modal Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 py-4 border-b border-slate-100 bg-white">
           <div className="flex items-center gap-3">
-            <img src={odooLogo} alt="Odoo" className="h-7 w-auto object-contain shrink-0" />
+            <div className="w-7 h-7 rounded-lg bg-[#714b67] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+              <FileText className="w-4 h-4 text-white" />
+            </div>
             <div className="border-l border-slate-200 pl-3">
               <h3 className="text-sm font-bold text-slate-900">Official Payslip Details</h3>
               <p className="text-[11px] text-slate-400">Payslip #{payslip.id} • {empName}</p>

@@ -15,9 +15,6 @@ from reportlab.platypus import (
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch, mm
 
-# Path to Odoo brand logo
-LOGO_PATH = Path(__file__).resolve().parent.parent.parent / "frontend" / "src" / "assets" / "odoo_logo.png"
-
 # Brand colors
 ODOO_PLUM = colors.HexColor("#714B67")
 ODOO_TEAL = colors.HexColor("#00A09D")
@@ -127,16 +124,13 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
     period_str = f"{period_start} to {period_end}" if period_start else "Current Pay Period"
 
     # Logo element
-    if LOGO_PATH.exists():
-        logo_img = Image(str(LOGO_PATH), width=90, height=30)
-    else:
-        logo_img = Paragraph("<b>Odoo ERP</b>", title_style)
+    logo_img = Paragraph("<font color='#714B67'><b>PeoplePay360</b></font>", title_style)
 
     header_left = [
         logo_img,
         Spacer(1, 4),
-        Paragraph("PeoplePay360 Global Workforce ERP", subtitle_style),
-        Paragraph("People Technology & Enterprise Payroll Systems", label_style),
+        Paragraph("Enterprise Payroll & Workforce ERP", subtitle_style),
+        Paragraph("People Technology Systems", label_style),
     ]
 
     header_right = [
@@ -311,7 +305,7 @@ def generate_payslip_pdf(payslip_data: dict) -> bytes:
     # Footer note
     elements.append(Spacer(1, 24))
     elements.append(Paragraph(
-        "<i>Note: This is a system-generated secure document from PeoplePay360 powered by Odoo ERP. No physical signature is required. For inquiries, contact payroll@peoplepay360.dev.</i>",
+        "<i>Note: This is a system-generated secure document from PeoplePay360. No physical signature is required. For inquiries, contact payroll@peoplepay360.dev.</i>",
         ParagraphStyle("FooterNote", fontName="Helvetica-Oblique", fontSize=7.5, leading=10, alignment=1, textColor=SLATE_MUTED)
     ))
 

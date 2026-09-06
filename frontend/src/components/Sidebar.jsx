@@ -1,5 +1,4 @@
 import { NavLink } from 'react-router-dom'
-import odooLogo from '../assets/odoo_logo.png'
 import {
   LayoutDashboard, Users, FileText, Clock, Umbrella,
   DollarSign, ChevronRight, Layers, Sliders, CalendarCheck
@@ -35,15 +34,17 @@ const navGroups = [
 export default function Sidebar() {
   return (
     <aside className="w-60 bg-white shadow-[1px_0_4px_rgba(0,0,0,0.03)] flex flex-col justify-between h-screen shrink-0 select-none z-20">
-      {/* Odoo App Header */}
+      {/* App Header */}
       <div className="h-14 px-4 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <img src={odooLogo} alt="Odoo" className="h-7 w-auto object-contain" />
+          <div className="w-7 h-7 rounded-lg bg-[#714b67] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+            <DollarSign className="w-4 h-4 text-white" />
+          </div>
           <div className="flex flex-col">
             <span className="font-semibold text-xs tracking-tight text-slate-900 flex items-center gap-1.5">
               PeoplePay360
               <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-600">
-                Odoo 18
+                ERP v2.0
               </span>
             </span>
             <span className="text-[11px] text-slate-400 font-normal">Payroll Guardian</span>
