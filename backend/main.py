@@ -1,5 +1,8 @@
+import json
+import logging
+import time
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -20,6 +23,10 @@ from routers import (
 )
 from seed import seed as run_seed
 
+# Structured Audit Logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("peoplepay360.audit")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,7 +34,6 @@ async def lifespan(app: FastAPI):
     # Auto-seed on every startup — idempotent: skips if data already exists
     run_seed(force=False)
     yield
-
 
 
 app = FastAPI(
@@ -54,6 +60,31 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def audit_log_middleware(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration_ms = round((time.time() - start_time) * 1000, 2)
+
+    client_ip = request.client.host if request.client else "unknown"
+    log_data = {
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "method": request.method,
+        "path": request.url.path,
+        "status_code": response.status_code,
+        "ip_address": client_ip,
+        "duration_ms": duration_ms,
+    }
+
+    # Extract authorization header user hint if present
+    auth_header = request.headers.get("authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        log_data["auth"] = "authenticated"
+
+    logger.info(json.dumps(log_data))
+    return response
 
 # Router registration
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])

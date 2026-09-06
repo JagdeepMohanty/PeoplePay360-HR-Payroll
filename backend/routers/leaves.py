@@ -68,7 +68,7 @@ def list_leave_allocations(
 
 
 @router.post("/allocations", response_model=LeaveAllocationRead, status_code=201)
-@router.post("/allocation", response_model=LeaveAllocationRead, status_code=201)
+@router.post("/allocation", response_model=LeaveAllocationRead, status_code=201, include_in_schema=False)
 def create_leave_allocation(
     payload: LeaveAllocationCreate,
     db: Session = Depends(get_db),
@@ -86,7 +86,7 @@ def create_leave_allocation(
 # ---------------------------------------------------------------------------
 
 @router.get("", response_model=list[LeaveRequestRead])
-@router.get("/", response_model=list[LeaveRequestRead])
+@router.get("/", response_model=list[LeaveRequestRead], include_in_schema=False)
 def list_leave_requests(
     employee_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
@@ -106,8 +106,8 @@ def list_leave_requests(
 
 
 @router.post("", response_model=LeaveRequestRead, status_code=201)
-@router.post("/", response_model=LeaveRequestRead, status_code=201)
-@router.post("/request", response_model=LeaveRequestRead, status_code=201)
+@router.post("/", response_model=LeaveRequestRead, status_code=201, include_in_schema=False)
+@router.post("/request", response_model=LeaveRequestRead, status_code=201, include_in_schema=False)
 def submit_leave(
     payload: LeaveRequestCreate,
     db: Session = Depends(get_db),

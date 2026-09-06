@@ -24,7 +24,7 @@ def get_my_employee_profile(
 
 
 @router.get("", response_model=list[EmployeeRead])
-@router.get("/", response_model=list[EmployeeRead])
+@router.get("/", response_model=list[EmployeeRead], include_in_schema=False)
 def list_employees(
     db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
@@ -54,7 +54,7 @@ def get_employee(
 
 
 @router.post("", response_model=EmployeeRead, status_code=201)
-@router.post("/", response_model=EmployeeRead, status_code=201)
+@router.post("/", response_model=EmployeeRead, status_code=201, include_in_schema=False)
 def create_employee(
     payload: EmployeeCreate,
     db: Session = Depends(get_db),

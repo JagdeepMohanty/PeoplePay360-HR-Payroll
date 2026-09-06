@@ -16,7 +16,8 @@ from services.pdf_generator import generate_payslip_pdf
 router = APIRouter()
 
 
-@router.get("/", response_model=list[PayrunRead])
+@router.get("", response_model=list[PayrunRead])
+@router.get("/", response_model=list[PayrunRead], include_in_schema=False)
 def list_payruns(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_payroll_read),
@@ -25,7 +26,7 @@ def list_payruns(
 
 
 @router.get("/payslips/{payslip_id}/pdf")
-@router.get("/payruns/payslips/{payslip_id}/pdf")
+@router.get("/payruns/payslips/{payslip_id}/pdf", include_in_schema=False)
 def download_payslip_pdf(
     payslip_id: int,
     db: Session = Depends(get_db),
@@ -94,8 +95,9 @@ def get_payrun(
     return payrun
 
 
-@router.post("/", response_model=PayrunRead, status_code=201)
-@router.post("/wizard", response_model=PayrunRead, status_code=201)
+@router.post("", response_model=PayrunRead, status_code=201)
+@router.post("/", response_model=PayrunRead, status_code=201, include_in_schema=False)
+@router.post("/wizard", response_model=PayrunRead, status_code=201, include_in_schema=False)
 def create_payrun(
     payload: PayrunCreate,
     db: Session = Depends(get_db),

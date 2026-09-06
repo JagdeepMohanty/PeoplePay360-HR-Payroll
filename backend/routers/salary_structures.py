@@ -15,7 +15,7 @@ router = APIRouter()
 
 
 @router.get("", response_model=list[SalaryStructureRead])
-@router.get("/", response_model=list[SalaryStructureRead])
+@router.get("/", response_model=list[SalaryStructureRead], include_in_schema=False)
 def list_salary_structures(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_salary_structure_read),
@@ -36,7 +36,7 @@ def get_salary_structure(
 
 
 @router.post("", response_model=SalaryStructureRead, status_code=201)
-@router.post("/", response_model=SalaryStructureRead, status_code=201)
+@router.post("/", response_model=SalaryStructureRead, status_code=201, include_in_schema=False)
 def create_salary_structure(
     payload: SalaryStructureCreate,
     db: Session = Depends(get_db),

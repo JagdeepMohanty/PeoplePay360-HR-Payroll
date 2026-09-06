@@ -11,15 +11,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from main import app
-from database import Base, get_db
+from database import Base, get_db, engine
 from models.user import UserRole
 
 # ---------------------------------------------------------------------------
 # Test configuration
 # ---------------------------------------------------------------------------
-TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite:///./test_db.sqlite")
-
-engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # ---------------------------------------------------------------------------

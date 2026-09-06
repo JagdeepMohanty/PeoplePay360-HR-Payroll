@@ -32,7 +32,7 @@ def get_active_contract(
 
 
 @router.get("", response_model=list[ContractRead])
-@router.get("/", response_model=list[ContractRead])
+@router.get("/", response_model=list[ContractRead], include_in_schema=False)
 def list_contracts(
     employee_id: Optional[int] = Query(None, description="Filter contracts by employee"),
     db: Session = Depends(get_db),
@@ -62,7 +62,7 @@ def get_contract(
 
 
 @router.post("", response_model=ContractRead, status_code=201)
-@router.post("/", response_model=ContractRead, status_code=201)
+@router.post("/", response_model=ContractRead, status_code=201, include_in_schema=False)
 def create_contract(
     payload: ContractCreate,
     db: Session = Depends(get_db),
