@@ -329,3 +329,21 @@ def mark_payrun_paid(
     return payrun
 
 
+@router.delete("/{payrun_id}", status_code=204)
+def delete_payrun(
+    payrun_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_payroll_manager),
+):
+    payrun = db.query(Payrun).filter(Payrun.id == payrun_id).first()
+    if not payrun:
+        raise HTTPException(status_code=404, detail="Payrun not found")
+    if payrun.status == PayrunStatus.PAID:
+        raise HTTPException(status_code=400, detail="Cannot delete a finalized PAID payrun batch.")
+
+    db.query(Payslip).filter(Payslip.payrun_id == payrun_id).delete()
+    db.delete(payrun)
+    db.commit()
+    return None
+
+

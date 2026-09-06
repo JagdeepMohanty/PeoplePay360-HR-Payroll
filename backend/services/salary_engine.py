@@ -17,6 +17,7 @@ from fastapi import HTTPException
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from models.attendance import Attendance
 from models.contract import Contract
 from models.leave import LeaveRequest, LeaveStatus
 from models.payroll import Payslip, SalaryStructure, RuleCategory
@@ -87,13 +88,6 @@ def get_period_working_days(period_start: str, period_end: str, schedule_interva
 def _resolve_contract(db: Session, employee_id: int, period_start: str, period_end: str) -> Contract:
     """
     Return the single active contract whose date range overlaps the payrun period.
-
-    Overlap condition:
-        contract.date_start <= period_end
-        AND (contract.date_end >= period_start OR contract.date_end IS NULL)
-        AND contract.is_active == True
-
-    Raises HTTP 400 with a descriptive message if no valid contract is found.
     """
     contract = (
         db.query(Contract)
@@ -117,15 +111,12 @@ def _resolve_contract(db: Session, employee_id: int, period_start: str, period_e
 
 
 # ---------------------------------------------------------------------------
-# LOP day accumulation
+# LOP & Overtime day/hour accumulation
 # ---------------------------------------------------------------------------
 
 def _calc_lop_days(db: Session, employee_id: int, period_start: str, period_end: str) -> Decimal:
     """
     Sum duration_days of all APPROVED unpaid leave requests overlapping the payrun period.
-
-    Overlap condition:
-        leave.date_from <= period_end AND leave.date_to >= period_start
     """
     unpaid_leaves = (
         db.query(LeaveRequest)
@@ -141,15 +132,30 @@ def _calc_lop_days(db: Session, employee_id: int, period_start: str, period_end:
     return _d(sum(leave.duration_days for leave in unpaid_leaves))
 
 
+def _calc_overtime_hours(db: Session, employee_id: int, period_start: str, period_end: str) -> Decimal:
+    """
+    Calculate accumulated overtime hours for worked attendance records in period where daily worked_hours > 8.0.
+    """
+    start_dt = datetime.fromisoformat(f"{period_start}T00:00:00")
+    end_dt = datetime.fromisoformat(f"{period_end}T23:59:59")
+    records = (
+        db.query(Attendance)
+        .filter(
+            Attendance.employee_id == employee_id,
+            Attendance.check_in >= start_dt,
+            Attendance.check_in <= end_dt,
+        )
+        .all()
+    )
+    total_ot = sum(max(0.0, float(r.worked_hours or 0.0) - 8.0) for r in records)
+    return _d(round(total_ot, 2))
+
+
 # ---------------------------------------------------------------------------
 # Schedule interval loader
 # ---------------------------------------------------------------------------
 
 def _get_schedule_intervals(db: Session, employee) -> list:
-    """
-    Return WorkScheduleInterval rows for the employee's assigned working schedule.
-    Returns an empty list if no schedule is configured (falls back to Mon–Fri).
-    """
     if not employee or not employee.working_schedule_id:
         return []
     return (
@@ -172,20 +178,6 @@ def compute_payslip(
     """
     Compute all salary rule lines for a single payslip and write results back
     onto the Payslip ORM object.
-
-    Rule sequence
-    ─────────────
-    [1] BASIC          = contract.wage
-    [2] ALLOWANCE      = BASIC × 15%  (housing 10% + transport 5%)
-                         OR sum of ALLOWANCE rules from SalaryStructure
-    [3] GROSS          = BASIC + ALLOWANCE
-    [4] LOP_DEDUCTION  = (BASIC / working_days_in_period) × approved_unpaid_days
-    [5] INCOME_TAX     = GROSS × 7%   (or rule-configured rate)
-    [6] SOCIAL_SEC     = GROSS × 3%   (or rule-configured rate)
-    [7] NET            = GROSS − LOP_DEDUCTION − INCOME_TAX − SOCIAL_SEC
-
-    All intermediate values use Decimal arithmetic; final values stored as float
-    on the ORM object for SQLAlchemy compatibility.
     """
     # ── 0. Resolve period-aware contract ──────────────────────────────────
     contract = _resolve_contract(db, payslip.employee_id, period_start, period_end)
@@ -201,8 +193,7 @@ def compute_payslip(
     # ── 1. Basic ──────────────────────────────────────────────────────────
     basic = _round2(_d(contract.wage))
 
-    # ── 2. Allowances ─────────────────────────────────────────────────────
-    # Resolve salary structure rules if assigned
+    # ── 2. Allowances & Overtime ──────────────────────────────────────────
     structure = None
     if contract.salary_structure_id:
         structure = db.query(SalaryStructure).filter(
@@ -229,21 +220,29 @@ def compute_payslip(
                     rule_allowance += _round2(_d(rule.amount_value))
         if rule_allowance > 0:
             allowances = _round2(rule_allowance)
-            # Recalculate split for breakdown (proportional to default 10/5 ratio)
             housing_allowance   = _round2(allowances * _d("0.667"))
             transport_allowance = _round2(allowances - housing_allowance)
+
+    # Overtime Pay (1.5x hourly rate for hours over 8.0)
+    lop_days      = _calc_lop_days(db, payslip.employee_id, period_start, period_end)
+    daily_rate    = _round2(basic / _d(working_days))
+    hourly_rate   = _round2(daily_rate / _d("8.0"))
+
+    ot_hours      = _calc_overtime_hours(db, payslip.employee_id, period_start, period_end)
+    overtime_pay  = _round2(ot_hours * hourly_rate * _d("1.5"))
+
+    allowances = _round2(allowances + overtime_pay)
 
     # ── 3. Gross ──────────────────────────────────────────────────────────
     gross = _round2(basic + allowances)
 
     # ── 4. LOP Deduction — uses exact calendar working days ───────────────
-    lop_days      = _calc_lop_days(db, payslip.employee_id, period_start, period_end)
-    daily_rate    = _round2(basic / _d(working_days))
     lop_deduction = _round2(lop_days * daily_rate)
 
-    # ── 5 & 6. Statutory deductions ───────────────────────────────────────
+    # ── 5 & 6. Statutory & Custom deductions ─────────────────────────────
     tax_rate = _d("0.07")
     soc_rate = _d("0.03")
+    custom_deductions = _d("0")
 
     if rules:
         for rule in rules:
@@ -251,10 +250,15 @@ def compute_payslip(
                 tax_rate = _d(rule.amount_value) / _d(100)
             elif rule.code == "SOCIAL_SEC" and rule.amount_type == "PERCENTAGE":
                 soc_rate = _d(rule.amount_value) / _d(100)
+            elif rule.category == RuleCategory.DEDUCTION and rule.code not in ["INCOME_TAX", "SOCIAL_SEC"]:
+                if rule.amount_type == "PERCENTAGE":
+                    custom_deductions += _round2(gross * (_d(rule.amount_value) / _d(100)))
+                elif rule.amount_type == "FIXED":
+                    custom_deductions += _round2(_d(rule.amount_value))
 
     income_tax       = _round2(gross * tax_rate)
     social_sec       = _round2(gross * soc_rate)
-    total_deductions = _round2(lop_deduction + income_tax + social_sec)
+    total_deductions = _round2(lop_deduction + income_tax + social_sec + custom_deductions)
 
     # ── 7. Net ────────────────────────────────────────────────────────────
     net         = _round2(gross - total_deductions)
@@ -271,6 +275,8 @@ def compute_payslip(
         "1_Basic_Pay":           float(basic),
         "2_Housing_Allowance":   float(housing_allowance),
         "2_Transport_Allowance": float(transport_allowance),
+        "2_Overtime_Hours":      float(ot_hours),
+        "2_Overtime_Pay":        float(overtime_pay),
         "3_Gross":               float(gross),
         "4_Working_Days":        working_days,
         "4_LOP_Days":            float(lop_days),

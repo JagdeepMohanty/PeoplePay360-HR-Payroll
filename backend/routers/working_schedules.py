@@ -90,3 +90,31 @@ def update_working_schedule(
     db.commit()
     db.refresh(sched)
     return sched
+
+
+@router.delete("/{schedule_id}", status_code=204)
+def delete_working_schedule(
+    schedule_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_hr_manager),
+):
+    sched = db.query(WorkingSchedule).filter(WorkingSchedule.id == schedule_id).first()
+    if not sched:
+        raise HTTPException(status_code=404, detail="Working schedule not found")
+    db.delete(sched)
+    db.commit()
+    return None
+
+
+@router.delete("/intervals/{interval_id}", status_code=204)
+def delete_schedule_interval(
+    interval_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_hr_manager),
+):
+    interval = db.query(WorkScheduleInterval).filter(WorkScheduleInterval.id == interval_id).first()
+    if not interval:
+        raise HTTPException(status_code=404, detail="Schedule interval not found")
+    db.delete(interval)
+    db.commit()
+    return None
